@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'di/injection.dart';
 import 'domain/models/room.dart';
 import 'domain/repositories/room_repository.dart';
+import 'data/services/automation_engine.dart';
 import 'app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   configureDependencies();
-
+  getIt<AutomationEngine>().start();
   _addDefaultRooms();
 
   runApp(const SHomeApp());

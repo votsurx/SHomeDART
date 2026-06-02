@@ -470,7 +470,9 @@ mixin _$SceneTrigger {
       throw _privateConstructorUsedError; // 'HH:mm' для time триггера
   String? get deviceId =>
       throw _privateConstructorUsedError; // для device_state триггера
-  String? get condition => throw _privateConstructorUsedError;
+  String? get condition => throw _privateConstructorUsedError; // 'on', 'off'
+  RepeatType get repeat => throw _privateConstructorUsedError;
+  List<int>? get repeatDays => throw _privateConstructorUsedError;
 
   /// Serializes this SceneTrigger to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -489,7 +491,12 @@ abstract class $SceneTriggerCopyWith<$Res> {
       _$SceneTriggerCopyWithImpl<$Res, SceneTrigger>;
   @useResult
   $Res call(
-      {TriggerType type, String? time, String? deviceId, String? condition});
+      {TriggerType type,
+      String? time,
+      String? deviceId,
+      String? condition,
+      RepeatType repeat,
+      List<int>? repeatDays});
 }
 
 /// @nodoc
@@ -511,6 +518,8 @@ class _$SceneTriggerCopyWithImpl<$Res, $Val extends SceneTrigger>
     Object? time = freezed,
     Object? deviceId = freezed,
     Object? condition = freezed,
+    Object? repeat = null,
+    Object? repeatDays = freezed,
   }) {
     return _then(_value.copyWith(
       type: null == type
@@ -529,6 +538,14 @@ class _$SceneTriggerCopyWithImpl<$Res, $Val extends SceneTrigger>
           ? _value.condition
           : condition // ignore: cast_nullable_to_non_nullable
               as String?,
+      repeat: null == repeat
+          ? _value.repeat
+          : repeat // ignore: cast_nullable_to_non_nullable
+              as RepeatType,
+      repeatDays: freezed == repeatDays
+          ? _value.repeatDays
+          : repeatDays // ignore: cast_nullable_to_non_nullable
+              as List<int>?,
     ) as $Val);
   }
 }
@@ -542,7 +559,12 @@ abstract class _$$SceneTriggerImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {TriggerType type, String? time, String? deviceId, String? condition});
+      {TriggerType type,
+      String? time,
+      String? deviceId,
+      String? condition,
+      RepeatType repeat,
+      List<int>? repeatDays});
 }
 
 /// @nodoc
@@ -562,6 +584,8 @@ class __$$SceneTriggerImplCopyWithImpl<$Res>
     Object? time = freezed,
     Object? deviceId = freezed,
     Object? condition = freezed,
+    Object? repeat = null,
+    Object? repeatDays = freezed,
   }) {
     return _then(_$SceneTriggerImpl(
       type: null == type
@@ -580,6 +604,14 @@ class __$$SceneTriggerImplCopyWithImpl<$Res>
           ? _value.condition
           : condition // ignore: cast_nullable_to_non_nullable
               as String?,
+      repeat: null == repeat
+          ? _value.repeat
+          : repeat // ignore: cast_nullable_to_non_nullable
+              as RepeatType,
+      repeatDays: freezed == repeatDays
+          ? _value._repeatDays
+          : repeatDays // ignore: cast_nullable_to_non_nullable
+              as List<int>?,
     ));
   }
 }
@@ -588,7 +620,13 @@ class __$$SceneTriggerImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$SceneTriggerImpl implements _SceneTrigger {
   const _$SceneTriggerImpl(
-      {required this.type, this.time, this.deviceId, this.condition});
+      {required this.type,
+      this.time,
+      this.deviceId,
+      this.condition,
+      this.repeat = RepeatType.once,
+      final List<int>? repeatDays})
+      : _repeatDays = repeatDays;
 
   factory _$SceneTriggerImpl.fromJson(Map<String, dynamic> json) =>
       _$$SceneTriggerImplFromJson(json);
@@ -603,10 +641,23 @@ class _$SceneTriggerImpl implements _SceneTrigger {
 // для device_state триггера
   @override
   final String? condition;
+// 'on', 'off'
+  @override
+  @JsonKey()
+  final RepeatType repeat;
+  final List<int>? _repeatDays;
+  @override
+  List<int>? get repeatDays {
+    final value = _repeatDays;
+    if (value == null) return null;
+    if (_repeatDays is EqualUnmodifiableListView) return _repeatDays;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
 
   @override
   String toString() {
-    return 'SceneTrigger(type: $type, time: $time, deviceId: $deviceId, condition: $condition)';
+    return 'SceneTrigger(type: $type, time: $time, deviceId: $deviceId, condition: $condition, repeat: $repeat, repeatDays: $repeatDays)';
   }
 
   @override
@@ -619,12 +670,16 @@ class _$SceneTriggerImpl implements _SceneTrigger {
             (identical(other.deviceId, deviceId) ||
                 other.deviceId == deviceId) &&
             (identical(other.condition, condition) ||
-                other.condition == condition));
+                other.condition == condition) &&
+            (identical(other.repeat, repeat) || other.repeat == repeat) &&
+            const DeepCollectionEquality()
+                .equals(other._repeatDays, _repeatDays));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, type, time, deviceId, condition);
+  int get hashCode => Object.hash(runtimeType, type, time, deviceId, condition,
+      repeat, const DeepCollectionEquality().hash(_repeatDays));
 
   /// Create a copy of SceneTrigger
   /// with the given fields replaced by the non-null parameter values.
@@ -647,7 +702,9 @@ abstract class _SceneTrigger implements SceneTrigger {
       {required final TriggerType type,
       final String? time,
       final String? deviceId,
-      final String? condition}) = _$SceneTriggerImpl;
+      final String? condition,
+      final RepeatType repeat,
+      final List<int>? repeatDays}) = _$SceneTriggerImpl;
 
   factory _SceneTrigger.fromJson(Map<String, dynamic> json) =
       _$SceneTriggerImpl.fromJson;
@@ -659,7 +716,11 @@ abstract class _SceneTrigger implements SceneTrigger {
   @override
   String? get deviceId; // для device_state триггера
   @override
-  String? get condition;
+  String? get condition; // 'on', 'off'
+  @override
+  RepeatType get repeat;
+  @override
+  List<int>? get repeatDays;
 
   /// Create a copy of SceneTrigger
   /// with the given fields replaced by the non-null parameter values.

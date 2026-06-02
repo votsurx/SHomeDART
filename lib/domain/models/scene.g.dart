@@ -47,6 +47,11 @@ _$SceneTriggerImpl _$$SceneTriggerImplFromJson(Map<String, dynamic> json) =>
       time: json['time'] as String?,
       deviceId: json['deviceId'] as String?,
       condition: json['condition'] as String?,
+      repeat: $enumDecodeNullable(_$RepeatTypeEnumMap, json['repeat']) ??
+          RepeatType.once,
+      repeatDays: (json['repeatDays'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList(),
     );
 
 Map<String, dynamic> _$$SceneTriggerImplToJson(_$SceneTriggerImpl instance) =>
@@ -55,10 +60,19 @@ Map<String, dynamic> _$$SceneTriggerImplToJson(_$SceneTriggerImpl instance) =>
       'time': instance.time,
       'deviceId': instance.deviceId,
       'condition': instance.condition,
+      'repeat': _$RepeatTypeEnumMap[instance.repeat]!,
+      'repeatDays': instance.repeatDays,
     };
 
 const _$TriggerTypeEnumMap = {
   TriggerType.time: 'time',
   TriggerType.deviceState: 'deviceState',
   TriggerType.manual: 'manual',
+};
+
+const _$RepeatTypeEnumMap = {
+  RepeatType.once: 'once',
+  RepeatType.daily: 'daily',
+  RepeatType.weekly: 'weekly',
+  RepeatType.interval: 'interval',
 };

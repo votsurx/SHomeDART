@@ -20,7 +20,7 @@ class ScenesNotifier extends StateNotifier<List<Scene>> {
 
   Future<void> addScene(Scene scene) async {
     await _repository.saveScene(scene);
-    state = [...state, scene];
+    await _loadScenes();
   }
 
   Future<void> executeScene(String id) async {

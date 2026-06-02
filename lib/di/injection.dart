@@ -12,11 +12,18 @@ import '../data/repositories/room_repository_impl.dart';
 import '../data/services/mqtt_service_impl.dart';
 import '../domain/repositories/scene_repository.dart';
 import '../data/repositories/scene_repository_impl.dart';
+import '../data/services/automation_engine.dart';
+
 
 
 final getIt = GetIt.instance;
 
 void configureDependencies() {
+  //Automatization
+  getIt.registerLazySingleton<AutomationEngine>(
+        () => AutomationEngine(getIt<SceneRepository>(), getIt<Talker>()),
+  );
+
   // Logger
   final talker = TalkerFlutter.init();
   getIt.registerLazySingleton<Talker>(() => talker);

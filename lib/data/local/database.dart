@@ -1,8 +1,8 @@
-// lib/data/local/database.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'entities/device_entity.dart';
 import 'entities/room_entity.dart';
+import 'entities/scene_entity.dart';
 
 class AppDatabase {
   static Database? _database;
@@ -19,7 +19,7 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE devices (
@@ -46,10 +46,35 @@ class AppDatabase {
             sortOrder INTEGER NOT NULL
           )
         ''');
+
+        await db.execute('''
+          CREATE TABLE scenes (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            icon TEXT NOT NULL,
+            actions TEXT NOT NULL,
+            triggerType TEXT,
+            triggerTime TEXT,
+            triggerRepeat TEXT
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute('ALTER TABLE devices ADD COLUMN dpsIndex INTEGER');
+        }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE scenes (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              icon TEXT NOT NULL,
+              actions TEXT NOT NULL,
+              triggerType TEXT,
+              triggerTime TEXT,
+              triggerRepeat TEXT
+            )
+          ''');
         }
       },
     );
@@ -92,5 +117,22 @@ class AppDatabase {
   static Future<void> deleteRoom(String id) async {
     final db = await database;
     await db.delete('rooms', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Scene CRUD
+  static Future<List<SceneEntity>> getAllScenes() async {
+    final db = await database;
+    final maps = await db.query('scenes');
+    return maps.map((map) => SceneEntity.fromMap(map)).toList();
+  }
+
+  static Future<void> insertScene(SceneEntity scene) async {
+    final db = await database;
+    await db.insert('scenes', scene.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  static Future<void> deleteScene(String id) async {
+    final db = await database;
+    await db.delete('scenes', where: 'id = ?', whereArgs: [id]);
   }
 }

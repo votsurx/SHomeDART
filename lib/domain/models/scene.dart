@@ -34,9 +34,12 @@ class SceneTrigger with _$SceneTrigger {
     String? time,       // 'HH:mm' для time триггера
     String? deviceId,   // для device_state триггера
     String? condition,  // 'on', 'off'
+    @Default(RepeatType.once) RepeatType repeat,
+    List<int>? repeatDays,
   }) = _SceneTrigger;
 
   factory SceneTrigger.fromJson(Map<String, dynamic> json) => _$SceneTriggerFromJson(json);
 }
 
 enum TriggerType { time, deviceState, manual }
+enum RepeatType { once, daily, weekly, interval }
