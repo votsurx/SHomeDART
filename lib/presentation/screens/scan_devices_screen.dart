@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:talker/talker.dart';
+import 'package:go_router/go_router.dart';
 import '../../domain/models/device.dart';
 import '../../application/state/devices_provider.dart';
 import '../../di/injection.dart';
 import '../../data/services/port_scanner.dart';
 
 class ScanDevicesScreen extends ConsumerStatefulWidget {
-  const ScanDevicesScreen({super.key});
+  final bool isOnboarding;
+
+  const ScanDevicesScreen({super.key, this.isOnboarding = false});
 
   @override
   ConsumerState<ScanDevicesScreen> createState() => _ScanDevicesScreenState();
@@ -29,7 +32,9 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Поиск устройств'),
-        leading: IconButton(
+        leading: widget.isOnboarding
+            ? null
+            : IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
@@ -47,7 +52,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                   const SizedBox(height: 24),
 
                   if (_scanning) ...[
-                    LinearProgressIndicator(value: _progress / _total),
+                    LinearProgressIndicator(value: _total > 0 ? _progress / _total : 0),
                     const SizedBox(height: 8),
                     Text('Проверено: $_progress / $_total'),
                     const SizedBox(height: 16),
@@ -65,8 +70,8 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                           color: Theme.of(context).colorScheme.surfaceContainerHighest,
                           child: ListTile(
                             leading: const Icon(Icons.check_circle, color: Colors.green, size: 28),
-                            title: Text(device.ip, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            subtitle: Text('Порт: ${device.port} • Добавлено', style: const TextStyle(fontSize: 13)),
+                            title: Text(device.ip, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                            subtitle: Text('Порт: ${device.port} • Добавлено', style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color)),
                           ),
                         );
                       }
@@ -83,8 +88,8 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                             ),
                             child: const Icon(Icons.devices, color: Colors.blue, size: 24),
                           ),
-                          title: Text(device.ip, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          subtitle: Text('Порт: ${device.port} • Tuya устройство', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                          title: Text(device.ip, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                          subtitle: Text('Порт: ${device.port} • Tuya устройство', style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodyMedium?.color)),
                           trailing: IconButton(
                             icon: Container(
                               width: 36, height: 36,
@@ -116,8 +121,9 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
             ),
           ),
 
+          // Кнопка сканирования
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: SizedBox(
               width: double.infinity,
               height: 56,
@@ -128,6 +134,20 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
               ),
             ),
           ),
+
+          // Кнопка Продолжить (только для онбординга)
+          if (widget.isOnboarding)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () => context.push('/onboarding/rooms'),
+                  child: const Text('Продолжить', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -214,7 +234,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                     localKey: localKeyController.text,
                     address: device.ip,
                     version: 3.5,
-                    properties: _getDefaultProperties(_selectedType),
+                    properties: {'isOn': false},
                   );
 
                   ref.read(devicesProvider.notifier).addDevice(newDevice);
@@ -232,24 +252,6 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
       ),
     );
   }
-  Map<String, dynamic> _getDefaultProperties(DeviceType type) {
-    switch (type) {
-      case DeviceType.switch1:
-        return {'channels': 1, 'states': [false]};
-      case DeviceType.switch2:
-        return {'channels': 2, 'states': [false, false]};
-      case DeviceType.switch3:
-        return {'channels': 3, 'states': [false, false, false]};
-      case DeviceType.curtain:
-        return {'position': 100, 'isMoving': false};
-      case DeviceType.hvac:
-        return {'isOn': false, 'temperature': 22, 'targetTemp': 24, 'mode': 'auto', 'fanSpeed': 1};
-      case DeviceType.light:
-        return {'brightness': 255, 'isOn': false};
-      default:
-        return {'isOn': false};
-    }
-  }
 
   Future<void> _startScan() async {
     setState(() {
@@ -262,9 +264,11 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
     final subnet = await PortScanner.getLocalSubnet();
     if (subnet == null) {
       setState(() => _scanning = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось определить локальную сеть')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось определить локальную сеть')),
+        );
+      }
       return;
     }
 

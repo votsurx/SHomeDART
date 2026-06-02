@@ -3,11 +3,13 @@ import 'di/injection.dart';
 import 'domain/models/room.dart';
 import 'domain/repositories/room_repository.dart';
 import 'data/services/automation_engine.dart';
+import 'data/services/timer_engine.dart';
 import 'app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   configureDependencies();
+  getIt<TimerEngine>().start();
   getIt<AutomationEngine>().start();
   _addDefaultRooms();
 

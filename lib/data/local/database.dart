@@ -4,6 +4,7 @@ import 'entities/device_entity.dart';
 import 'entities/room_entity.dart';
 import 'entities/scene_entity.dart';
 import 'entities/event_entity.dart';
+import '../../domain/models/device_timer.dart';
 
 class AppDatabase {
   static Database? _database;
@@ -20,8 +21,19 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
+
+        await db.execute('''
+          CREATE TABLE timers (
+            id TEXT PRIMARY KEY,
+            deviceId TEXT NOT NULL,
+            deviceName TEXT NOT NULL,
+            command TEXT NOT NULL,
+            executeAt TEXT NOT NULL,
+            executed INTEGER NOT NULL DEFAULT 0
+          )
+        ''');
 
         await db.execute('''
           CREATE TABLE events (
@@ -176,5 +188,41 @@ class AppDatabase {
   static Future<void> deleteScene(String id) async {
     final db = await database;
     await db.delete('scenes', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // timers
+  static Future<void> insertTimer(DeviceTimer timer) async {
+    final db = await database;
+    await db.insert('timers', {
+      'id': timer.id,
+      'deviceId': timer.deviceId,
+      'deviceName': timer.deviceName,
+      'command': timer.command,
+      'executeAt': timer.executeAt.toIso8601String(),
+      'executed': timer.executed ? 1 : 0,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  static Future<List<DeviceTimer>> getActiveTimers() async {
+    final db = await database;
+    final maps = await db.query('timers', where: 'executed = 0', orderBy: 'executeAt ASC');
+    return maps.map((m) => DeviceTimer(
+      id: m['id'] as String,
+      deviceId: m['deviceId'] as String,
+      deviceName: m['deviceName'] as String,
+      command: m['command'] as String,
+      executeAt: DateTime.parse(m['executeAt'] as String),
+      executed: (m['executed'] as int) == 1,
+    )).toList();
+  }
+
+  static Future<void> markTimerExecuted(String id) async {
+    final db = await database;
+    await db.update('timers', {'executed': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future<void> deleteTimer(String id) async {
+    final db = await database;
+    await db.delete('timers', where: 'id = ?', whereArgs: [id]);
   }
 }

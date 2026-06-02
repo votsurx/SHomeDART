@@ -13,12 +13,16 @@ import '../data/services/mqtt_service_impl.dart';
 import '../domain/repositories/scene_repository.dart';
 import '../data/repositories/scene_repository_impl.dart';
 import '../data/services/automation_engine.dart';
-
-
+import '../data/services/timer_engine.dart';
 
 final getIt = GetIt.instance;
 
 void configureDependencies() {
+  // Timers
+  getIt.registerLazySingleton<TimerEngine>(
+        () => TimerEngine(getIt<DeviceRepository>(), getIt<Talker>()),
+  );
+
   //Automatization
   getIt.registerLazySingleton<AutomationEngine>(
         () => AutomationEngine(getIt<SceneRepository>(), getIt<Talker>()),
