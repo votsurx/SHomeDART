@@ -21,8 +21,21 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
+
+        await db.execute('''
+          CREATE TABLE energy_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deviceId TEXT NOT NULL,
+            deviceName TEXT NOT NULL,
+            date TEXT NOT NULL,
+            totalEnergy REAL NOT NULL DEFAULT 0,
+            power REAL NOT NULL DEFAULT 0,
+            voltage REAL NOT NULL DEFAULT 0,
+            current REAL NOT NULL DEFAULT 0
+          )
+        ''');
 
         await db.execute('''
           CREATE TABLE timers (
@@ -119,11 +132,66 @@ class AppDatabase {
             )
           ''');
         }
+        if (oldVersion < 6) {
+          await db.execute('''
+            CREATE TABLE energy_log (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              deviceId TEXT NOT NULL,
+              deviceName TEXT NOT NULL,
+              date TEXT NOT NULL,
+              totalEnergy REAL NOT NULL DEFAULT 0,
+              power REAL NOT NULL DEFAULT 0,
+              voltage REAL NOT NULL DEFAULT 0,
+              current REAL NOT NULL DEFAULT 0
+            )
+          ''');
+        }
       },
     );
   }
 
-  //Events
+
+  static Future<void> upsertEnergyLog({
+    required String deviceId,
+    required String deviceName,
+    required double power,
+    required double voltage,
+    required double current,
+    required double energyIncrement,
+  }) async {
+    final db = await database;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+
+    final existing = await db.query('energy_log', where: 'deviceId = ? AND date = ?', whereArgs: [deviceId, today]);
+
+    if (existing.isNotEmpty) {
+      final row = existing.first;
+      final newTotal = (row['totalEnergy'] as num).toDouble() + energyIncrement;
+      await db.update('energy_log', {
+        'totalEnergy': newTotal,
+        'power': power,
+        'voltage': voltage,
+        'current': current,
+      }, where: 'deviceId = ? AND date = ?', whereArgs: [deviceId, today]);
+    } else {
+      await db.insert('energy_log', {
+        'deviceId': deviceId,
+        'deviceName': deviceName,
+        'date': today,
+        'totalEnergy': energyIncrement,
+        'power': power,
+        'voltage': voltage,
+        'current': current,
+      });
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getEnergyStats({int days = 7}) async {
+    final db = await database;
+    return await db.query('energy_log', orderBy: 'date DESC', limit: days);
+  }
+
+  //Events CRUD
   static Future<void> insertEvent(EventEntity event) async {
     final db = await database;
     await db.insert('events', event.toMap());
@@ -196,7 +264,7 @@ class AppDatabase {
     await db.delete('scenes', where: 'id = ?', whereArgs: [id]);
   }
 
-  // timers
+  // timers CRUD
   static Future<void> insertTimer(DeviceTimer timer) async {
     final db = await database;
     await db.insert('timers', {

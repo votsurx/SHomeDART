@@ -3,6 +3,7 @@ import 'package:talker/talker.dart';
 import '../../domain/models/device.dart';
 import '../protocols/tuya_protocol.dart';
 import 'event_logger.dart';
+import '../local/database.dart';
 
 class AdaptivePoller {
   final TuyaProtocol _tuyaProtocol;
@@ -61,14 +62,13 @@ class AdaptivePoller {
   }
 
   Future<void> _pollDevice(Device device, _DevicePollState state) async {
-    if (state.polling) return; // Уже опрашивается — пропускаем
+    if (state.polling) return;
     state.polling = true;
 
     try {
       final result = await _tuyaProtocol.getStatus(device);
 
       if (result != null && result['dps'] != null) {
-        // УСПЕХ! Сброс в нормальный режим
         state.onSuccess();
         _onOnlineChanged(device.id, true);
 
@@ -83,7 +83,6 @@ class AdaptivePoller {
           if (realIsOn != currentIsOn) {
             _talker.info('State changed: ${device.name} -> ${realIsOn ? "ON" : "OFF"}');
             _onStateChanged(device.id, realIsOn);
-            // Логируем событие
             EventLogger.log(
               deviceId: device.id,
               deviceName: device.name,
@@ -91,8 +90,28 @@ class AdaptivePoller {
             );
           }
         }
+
+        // Энергомониторинг — если есть DPS 23 (мощность)
+        if (dps['23'] != null) {
+          final power = double.parse(dps['23'].toString()) / 10.0;
+          final voltage = dps['22'] != null ? double.parse(dps['22'].toString()) / 10.0 : 0.0;
+          final current = dps['21'] != null ? double.parse(dps['21'].toString()) : 0.0;
+          final energyIncrement = dps['1'] == true ? power * (2.0 / 3600.0) : 0;
+
+          try {
+            await AppDatabase.upsertEnergyLog(
+              deviceId: device.id,
+              deviceName: device.name,
+              power: power,
+              voltage: voltage,
+              current: current,
+              energyIncrement: energyIncrement.toDouble(),
+            );
+          } catch (e) {
+            // Игнорируем ошибки записи энергии
+          }
+        }
       } else {
-        // Ошибка
         state.onError();
         _onOnlineChanged(device.id, false);
         _talker.debug('Poll failed for ${device.name}, interval: ${state.interval}');

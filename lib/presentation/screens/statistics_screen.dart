@@ -18,6 +18,21 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     _tabController = TabController(length: 3, vsync: this);
   }
 
+  Future<List<Map<String, dynamic>>> _getDeviceStats() async {
+    final events = await AppDatabase.getRecentEvents(limit: 1000);
+    final stats = <String, Map<String, dynamic>>{};
+
+    for (final event in events) {
+      if (event.event == 'turnOn' || event.event == 'turnOff') {
+        final name = event.deviceName ?? 'Неизвестно';
+        stats.putIfAbsent(name, () => {'name': name, 'count': 0});
+        stats[name]!['count'] = (stats[name]!['count'] as int) + 1;
+      }
+    }
+
+    return stats.values.toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,21 +101,35 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
   }
 
   Widget _buildEnergyTab() {
-    return const Center(child: Text('Энергопотребление — скоро'));
-  }
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: AppDatabase.getEnergyStats(days: 7),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-  Future<List<Map<String, dynamic>>> _getDeviceStats() async {
-    final events = await AppDatabase.getRecentEvents(limit: 1000);
-    final stats = <String, Map<String, dynamic>>{};
+        final data = snapshot.data!;
+        if (data.isEmpty) return const Center(child: Text('Нет данных энергопотребления'));
 
-    for (final event in events) {
-      if (event.event == 'turnOn' || event.event == 'turnOff') {
-        final name = event.deviceName ?? 'Неизвестно';
-        stats.putIfAbsent(name, () => {'name': name, 'count': 0});
-        stats[name]!['count'] = (stats[name]!['count'] as int) + 1;
-      }
-    }
+        // Суммируем по устройствам
+        final deviceTotals = <String, double>{};
+        for (final row in data) {
+          final name = row['deviceName'] as String;
+          deviceTotals[name] = (deviceTotals[name] ?? 0) + (row['totalEnergy'] as num).toDouble();
+        }
 
-    return stats.values.toList();
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('За 7 дней:', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 16),
+            ...deviceTotals.entries.map((e) => Card(
+              child: ListTile(
+                title: Text(e.key),
+                trailing: Text('${e.value.toStringAsFixed(3)} kWh', style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            )),
+          ],
+        );
+      },
+    );
   }
 }
