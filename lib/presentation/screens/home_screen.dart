@@ -87,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _buildTile(icon: Icons.meeting_room, label: 'Комнаты', color: Colors.brown, onTap: () => context.push('/rooms')),
                 _buildTile(icon: Icons.bar_chart, label: 'Статистика', color: Colors.green, onTap: () {}),
                 _buildTile(icon: Icons.timer, label: 'Таймеры', color: Colors.deepOrange, onTap: () {}),
-                _buildTile(icon: Icons.notifications, label: 'События', color: Colors.red, onTap: () {}),
+                _buildTile(icon: Icons.notifications, label: 'События', color: Colors.red, onTap: () => context.push('/events')),
               ],
             ),
           );

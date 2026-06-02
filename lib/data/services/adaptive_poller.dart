@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:talker/talker.dart';
 import '../../domain/models/device.dart';
 import '../protocols/tuya_protocol.dart';
+import 'event_logger.dart';
 
 class AdaptivePoller {
   final TuyaProtocol _tuyaProtocol;
@@ -73,7 +74,7 @@ class AdaptivePoller {
 
         final dps = result['dps'] as Map<String, dynamic>;
         final dpsIndex = device.dpsIndex ?? 1;
-        final rawValue = dps[dpsIndex] ?? dps[dpsIndex.toString()];
+        final rawValue = dps['$dpsIndex'] ?? dps[dpsIndex.toString()];
 
         if (rawValue != null) {
           final realIsOn = rawValue == true || rawValue == 1;
@@ -82,6 +83,12 @@ class AdaptivePoller {
           if (realIsOn != currentIsOn) {
             _talker.info('State changed: ${device.name} -> ${realIsOn ? "ON" : "OFF"}');
             _onStateChanged(device.id, realIsOn);
+            // Логируем событие
+            EventLogger.log(
+              deviceId: device.id,
+              deviceName: device.name,
+              event: realIsOn ? 'turnOn' : 'turnOff',
+            );
           }
         }
       } else {

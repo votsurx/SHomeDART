@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import 'entities/device_entity.dart';
 import 'entities/room_entity.dart';
 import 'entities/scene_entity.dart';
+import 'entities/event_entity.dart';
 
 class AppDatabase {
   static Database? _database;
@@ -19,8 +20,20 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
+
+        await db.execute('''
+          CREATE TABLE events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deviceId TEXT NOT NULL,
+            deviceName TEXT NOT NULL,
+            event TEXT NOT NULL,
+            sceneName TEXT,
+            timestamp TEXT NOT NULL
+          )
+        ''');
+
         await db.execute('''
           CREATE TABLE devices (
             id TEXT PRIMARY KEY,
@@ -76,8 +89,37 @@ class AppDatabase {
             )
           ''');
         }
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              deviceId TEXT NOT NULL,
+              deviceName TEXT NOT NULL,
+              event TEXT NOT NULL,
+              sceneName TEXT,
+              timestamp TEXT NOT NULL
+            )
+          ''');
+        }
       },
     );
+  }
+
+  //Events
+  static Future<void> insertEvent(EventEntity event) async {
+    final db = await database;
+    await db.insert('events', event.toMap());
+  }
+
+  static Future<List<EventEntity>> getRecentEvents({int limit = 100}) async {
+    final db = await database;
+    final maps = await db.query('events', orderBy: 'id DESC', limit: limit);
+    return maps.map((m) => EventEntity.fromMap(m)).toList();
+  }
+
+  static Future<void> clearEvents() async {
+    final db = await database;
+    await db.delete('events');
   }
 
   // Device CRUD

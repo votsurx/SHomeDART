@@ -8,10 +8,16 @@ import '../../presentation/screens/energy_screen.dart';
 import '../../presentation/screens/scenes_screen.dart';
 import '../../presentation/screens/scan_devices_screen.dart';
 import '../../presentation/screens/rooms_manage_screen.dart';
+import '../../presentation/screens/events_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/',
   routes: [
+    GoRoute(
+        path: '/events',
+        builder: (context, state) => const EventsScreen()
+    ),
+
     GoRoute(
       path: '/rooms',
       builder: (context, state) => const RoomsManageScreen(),

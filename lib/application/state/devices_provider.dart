@@ -6,6 +6,7 @@ import '../../domain/repositories/device_repository.dart';
 import '../../data/protocols/tuya_protocol.dart';
 import '../../di/injection.dart';
 import 'package:uuid/uuid.dart';
+import '../../data/services/event_logger.dart';
 
 final devicesProvider = StateNotifierProvider<DevicesNotifier, List<Device>>((ref) {
   return DevicesNotifier();
@@ -58,6 +59,8 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
 
   // ✅ ВКЛ — оптимистично
   Future<bool> turnOn(String id) async {
+    final device = state.firstWhere((d) => d.id == id);
+    EventLogger.log(deviceId: id, deviceName: device.name, event: 'turnOn');
     onCommandSent?.call(id);
     _updateLocalState(id, true);
 
@@ -75,6 +78,8 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
 
   // ✅ ВЫКЛ — оптимистично
   Future<bool> turnOff(String id) async {
+    final device = state.firstWhere((d) => d.id == id);
+    EventLogger.log(deviceId: id, deviceName: device.name, event: 'turnOff');
     onCommandSent?.call(id);
     _updateLocalState(id, false);
 

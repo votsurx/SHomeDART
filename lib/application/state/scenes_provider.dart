@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/services/event_logger.dart';
 import '../../domain/models/scene.dart';
 import '../../domain/repositories/scene_repository.dart';
 import '../../di/injection.dart';
@@ -26,6 +27,14 @@ class ScenesNotifier extends StateNotifier<List<Scene>> {
   Future<void> executeScene(String id) async {
     final scene = state.firstWhere((s) => s.id == id);
     await _repository.executeScene(scene);
+
+    // Логируем выполнение сцены
+    await EventLogger.log(
+      deviceId: '',
+      deviceName: '',
+      event: 'scene',
+      sceneName: scene.name,
+    );
   }
 
   Future<void> deleteScene(String id) async {
