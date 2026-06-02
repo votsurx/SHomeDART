@@ -35,7 +35,12 @@ dependencies:
 
   # UI
   flutter_animate: ^4.5.2
+  tinytuya:
+    path: lib/packages/tinytuya
+  cryptography: ^2.9.0
 
+  shared_preferences: ^2.2.2
+  path: ^1.8.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -50,6 +55,9 @@ dev_dependencies:
 
   # Linting
   flutter_lints: ^5.0.0
+
+  # MQTT
+  mqtt_client: ^10.0.0
 
 flutter:
   uses-material-design: true

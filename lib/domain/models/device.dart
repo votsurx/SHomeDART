@@ -12,6 +12,18 @@ class Device with _$Device {
     required String roomId,
     required bool isOnline,
     required DeviceState state,
+    String? deviceId,
+    String? localKey,
+    String? address,
+    double? version,
+    int? dpsIndex,
+    // Для датчиков
+    String? mqttTopic,
+    double? temperature,
+    double? humidity,
+    bool? motion,
+    bool? doorOpen,
+    double? battery,
     @Default({}) Map<String, dynamic> properties,
   }) = _Device;
 
@@ -19,13 +31,18 @@ class Device with _$Device {
 }
 
 enum DeviceType {
+  outlet,
   switch1,
   switch2,
   switch3,
-  sensor,
+  sensorTemp,      // Датчик температуры
+  sensorMotion,    // Датчик движения
+  sensorDoor,      // Датчик двери
   curtain,
   hvac,
-  camera
+  light,
+  camera,
+  button           // Zigbee кнопка
 }
 
 enum DeviceState {

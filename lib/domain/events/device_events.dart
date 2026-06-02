@@ -16,3 +16,11 @@ class DeviceTelemetryReceived extends DeviceEvent {
   final Map<String, dynamic> data;
   DeviceTelemetryReceived(String deviceId, this.data) : super(deviceId);
 }
+
+class DeviceOffline extends DeviceEvent {
+  DeviceOffline(String deviceId) : super(deviceId);
+}
+
+class DeviceOnline extends DeviceEvent {
+  DeviceOnline(String deviceId) : super(deviceId);
+}

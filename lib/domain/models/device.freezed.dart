@@ -26,6 +26,17 @@ mixin _$Device {
   String get roomId => throw _privateConstructorUsedError;
   bool get isOnline => throw _privateConstructorUsedError;
   DeviceState get state => throw _privateConstructorUsedError;
+  String? get deviceId => throw _privateConstructorUsedError;
+  String? get localKey => throw _privateConstructorUsedError;
+  String? get address => throw _privateConstructorUsedError;
+  double? get version => throw _privateConstructorUsedError;
+  int? get dpsIndex => throw _privateConstructorUsedError; // Для датчиков
+  String? get mqttTopic => throw _privateConstructorUsedError;
+  double? get temperature => throw _privateConstructorUsedError;
+  double? get humidity => throw _privateConstructorUsedError;
+  bool? get motion => throw _privateConstructorUsedError;
+  bool? get doorOpen => throw _privateConstructorUsedError;
+  double? get battery => throw _privateConstructorUsedError;
   Map<String, dynamic> get properties => throw _privateConstructorUsedError;
 
   /// Serializes this Device to a JSON map.
@@ -49,6 +60,17 @@ abstract class $DeviceCopyWith<$Res> {
       String roomId,
       bool isOnline,
       DeviceState state,
+      String? deviceId,
+      String? localKey,
+      String? address,
+      double? version,
+      int? dpsIndex,
+      String? mqttTopic,
+      double? temperature,
+      double? humidity,
+      bool? motion,
+      bool? doorOpen,
+      double? battery,
       Map<String, dynamic> properties});
 }
 
@@ -73,6 +95,17 @@ class _$DeviceCopyWithImpl<$Res, $Val extends Device>
     Object? roomId = null,
     Object? isOnline = null,
     Object? state = null,
+    Object? deviceId = freezed,
+    Object? localKey = freezed,
+    Object? address = freezed,
+    Object? version = freezed,
+    Object? dpsIndex = freezed,
+    Object? mqttTopic = freezed,
+    Object? temperature = freezed,
+    Object? humidity = freezed,
+    Object? motion = freezed,
+    Object? doorOpen = freezed,
+    Object? battery = freezed,
     Object? properties = null,
   }) {
     return _then(_value.copyWith(
@@ -100,6 +133,50 @@ class _$DeviceCopyWithImpl<$Res, $Val extends Device>
           ? _value.state
           : state // ignore: cast_nullable_to_non_nullable
               as DeviceState,
+      deviceId: freezed == deviceId
+          ? _value.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      localKey: freezed == localKey
+          ? _value.localKey
+          : localKey // ignore: cast_nullable_to_non_nullable
+              as String?,
+      address: freezed == address
+          ? _value.address
+          : address // ignore: cast_nullable_to_non_nullable
+              as String?,
+      version: freezed == version
+          ? _value.version
+          : version // ignore: cast_nullable_to_non_nullable
+              as double?,
+      dpsIndex: freezed == dpsIndex
+          ? _value.dpsIndex
+          : dpsIndex // ignore: cast_nullable_to_non_nullable
+              as int?,
+      mqttTopic: freezed == mqttTopic
+          ? _value.mqttTopic
+          : mqttTopic // ignore: cast_nullable_to_non_nullable
+              as String?,
+      temperature: freezed == temperature
+          ? _value.temperature
+          : temperature // ignore: cast_nullable_to_non_nullable
+              as double?,
+      humidity: freezed == humidity
+          ? _value.humidity
+          : humidity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      motion: freezed == motion
+          ? _value.motion
+          : motion // ignore: cast_nullable_to_non_nullable
+              as bool?,
+      doorOpen: freezed == doorOpen
+          ? _value.doorOpen
+          : doorOpen // ignore: cast_nullable_to_non_nullable
+              as bool?,
+      battery: freezed == battery
+          ? _value.battery
+          : battery // ignore: cast_nullable_to_non_nullable
+              as double?,
       properties: null == properties
           ? _value.properties
           : properties // ignore: cast_nullable_to_non_nullable
@@ -122,6 +199,17 @@ abstract class _$$DeviceImplCopyWith<$Res> implements $DeviceCopyWith<$Res> {
       String roomId,
       bool isOnline,
       DeviceState state,
+      String? deviceId,
+      String? localKey,
+      String? address,
+      double? version,
+      int? dpsIndex,
+      String? mqttTopic,
+      double? temperature,
+      double? humidity,
+      bool? motion,
+      bool? doorOpen,
+      double? battery,
       Map<String, dynamic> properties});
 }
 
@@ -144,6 +232,17 @@ class __$$DeviceImplCopyWithImpl<$Res>
     Object? roomId = null,
     Object? isOnline = null,
     Object? state = null,
+    Object? deviceId = freezed,
+    Object? localKey = freezed,
+    Object? address = freezed,
+    Object? version = freezed,
+    Object? dpsIndex = freezed,
+    Object? mqttTopic = freezed,
+    Object? temperature = freezed,
+    Object? humidity = freezed,
+    Object? motion = freezed,
+    Object? doorOpen = freezed,
+    Object? battery = freezed,
     Object? properties = null,
   }) {
     return _then(_$DeviceImpl(
@@ -171,6 +270,50 @@ class __$$DeviceImplCopyWithImpl<$Res>
           ? _value.state
           : state // ignore: cast_nullable_to_non_nullable
               as DeviceState,
+      deviceId: freezed == deviceId
+          ? _value.deviceId
+          : deviceId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      localKey: freezed == localKey
+          ? _value.localKey
+          : localKey // ignore: cast_nullable_to_non_nullable
+              as String?,
+      address: freezed == address
+          ? _value.address
+          : address // ignore: cast_nullable_to_non_nullable
+              as String?,
+      version: freezed == version
+          ? _value.version
+          : version // ignore: cast_nullable_to_non_nullable
+              as double?,
+      dpsIndex: freezed == dpsIndex
+          ? _value.dpsIndex
+          : dpsIndex // ignore: cast_nullable_to_non_nullable
+              as int?,
+      mqttTopic: freezed == mqttTopic
+          ? _value.mqttTopic
+          : mqttTopic // ignore: cast_nullable_to_non_nullable
+              as String?,
+      temperature: freezed == temperature
+          ? _value.temperature
+          : temperature // ignore: cast_nullable_to_non_nullable
+              as double?,
+      humidity: freezed == humidity
+          ? _value.humidity
+          : humidity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      motion: freezed == motion
+          ? _value.motion
+          : motion // ignore: cast_nullable_to_non_nullable
+              as bool?,
+      doorOpen: freezed == doorOpen
+          ? _value.doorOpen
+          : doorOpen // ignore: cast_nullable_to_non_nullable
+              as bool?,
+      battery: freezed == battery
+          ? _value.battery
+          : battery // ignore: cast_nullable_to_non_nullable
+              as double?,
       properties: null == properties
           ? _value._properties
           : properties // ignore: cast_nullable_to_non_nullable
@@ -189,6 +332,17 @@ class _$DeviceImpl implements _Device {
       required this.roomId,
       required this.isOnline,
       required this.state,
+      this.deviceId,
+      this.localKey,
+      this.address,
+      this.version,
+      this.dpsIndex,
+      this.mqttTopic,
+      this.temperature,
+      this.humidity,
+      this.motion,
+      this.doorOpen,
+      this.battery,
       final Map<String, dynamic> properties = const {}})
       : _properties = properties;
 
@@ -207,6 +361,29 @@ class _$DeviceImpl implements _Device {
   final bool isOnline;
   @override
   final DeviceState state;
+  @override
+  final String? deviceId;
+  @override
+  final String? localKey;
+  @override
+  final String? address;
+  @override
+  final double? version;
+  @override
+  final int? dpsIndex;
+// Для датчиков
+  @override
+  final String? mqttTopic;
+  @override
+  final double? temperature;
+  @override
+  final double? humidity;
+  @override
+  final bool? motion;
+  @override
+  final bool? doorOpen;
+  @override
+  final double? battery;
   final Map<String, dynamic> _properties;
   @override
   @JsonKey()
@@ -218,7 +395,7 @@ class _$DeviceImpl implements _Device {
 
   @override
   String toString() {
-    return 'Device(id: $id, name: $name, type: $type, roomId: $roomId, isOnline: $isOnline, state: $state, properties: $properties)';
+    return 'Device(id: $id, name: $name, type: $type, roomId: $roomId, isOnline: $isOnline, state: $state, deviceId: $deviceId, localKey: $localKey, address: $address, version: $version, dpsIndex: $dpsIndex, mqttTopic: $mqttTopic, temperature: $temperature, humidity: $humidity, motion: $motion, doorOpen: $doorOpen, battery: $battery, properties: $properties)';
   }
 
   @override
@@ -233,14 +410,50 @@ class _$DeviceImpl implements _Device {
             (identical(other.isOnline, isOnline) ||
                 other.isOnline == isOnline) &&
             (identical(other.state, state) || other.state == state) &&
+            (identical(other.deviceId, deviceId) ||
+                other.deviceId == deviceId) &&
+            (identical(other.localKey, localKey) ||
+                other.localKey == localKey) &&
+            (identical(other.address, address) || other.address == address) &&
+            (identical(other.version, version) || other.version == version) &&
+            (identical(other.dpsIndex, dpsIndex) ||
+                other.dpsIndex == dpsIndex) &&
+            (identical(other.mqttTopic, mqttTopic) ||
+                other.mqttTopic == mqttTopic) &&
+            (identical(other.temperature, temperature) ||
+                other.temperature == temperature) &&
+            (identical(other.humidity, humidity) ||
+                other.humidity == humidity) &&
+            (identical(other.motion, motion) || other.motion == motion) &&
+            (identical(other.doorOpen, doorOpen) ||
+                other.doorOpen == doorOpen) &&
+            (identical(other.battery, battery) || other.battery == battery) &&
             const DeepCollectionEquality()
                 .equals(other._properties, _properties));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, type, roomId, isOnline,
-      state, const DeepCollectionEquality().hash(_properties));
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      name,
+      type,
+      roomId,
+      isOnline,
+      state,
+      deviceId,
+      localKey,
+      address,
+      version,
+      dpsIndex,
+      mqttTopic,
+      temperature,
+      humidity,
+      motion,
+      doorOpen,
+      battery,
+      const DeepCollectionEquality().hash(_properties));
 
   /// Create a copy of Device
   /// with the given fields replaced by the non-null parameter values.
@@ -266,6 +479,17 @@ abstract class _Device implements Device {
       required final String roomId,
       required final bool isOnline,
       required final DeviceState state,
+      final String? deviceId,
+      final String? localKey,
+      final String? address,
+      final double? version,
+      final int? dpsIndex,
+      final String? mqttTopic,
+      final double? temperature,
+      final double? humidity,
+      final bool? motion,
+      final bool? doorOpen,
+      final double? battery,
       final Map<String, dynamic> properties}) = _$DeviceImpl;
 
   factory _Device.fromJson(Map<String, dynamic> json) = _$DeviceImpl.fromJson;
@@ -282,6 +506,28 @@ abstract class _Device implements Device {
   bool get isOnline;
   @override
   DeviceState get state;
+  @override
+  String? get deviceId;
+  @override
+  String? get localKey;
+  @override
+  String? get address;
+  @override
+  double? get version;
+  @override
+  int? get dpsIndex; // Для датчиков
+  @override
+  String? get mqttTopic;
+  @override
+  double? get temperature;
+  @override
+  double? get humidity;
+  @override
+  bool? get motion;
+  @override
+  bool? get doorOpen;
+  @override
+  double? get battery;
   @override
   Map<String, dynamic> get properties;
 
