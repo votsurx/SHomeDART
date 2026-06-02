@@ -9,10 +9,16 @@ import '../../presentation/screens/scan_devices_screen.dart';
 import '../../presentation/screens/rooms_manage_screen.dart';
 import '../../presentation/screens/events_screen.dart';
 import '../../presentation/screens/timers_screen.dart';
+import '../../presentation/screens/statistics_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/',
   routes: [
+    GoRoute(
+        path: '/statistics',
+        builder: (context, state) => const StatisticsScreen()
+    ),
+
     GoRoute(
       path: '/timers',
       builder: (context, state) => const TimersScreen(),

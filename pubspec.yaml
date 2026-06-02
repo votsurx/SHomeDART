@@ -59,6 +59,9 @@ dev_dependencies:
   # MQTT
   mqtt_client: ^10.0.0
 
+  # Statistics
+  fl_chart: ^0.68.0
+
 flutter:
   uses-material-design: true
   assets:

@@ -55,6 +55,7 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
   Future<void> addDevice(Device device) async {
     await _repository.saveDevice(device);
     state = [...state, device];
+    EventLogger.log(event: 'deviceAdded', deviceId: device.id, deviceName: device.name);
   }
 
   // ✅ ВКЛ — оптимистично
@@ -189,6 +190,8 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
   }
 
   Future<void> removeDevice(String id) async {
+    final device = state.firstWhere((d) => d.id == id);
+    EventLogger.log(event: 'deviceRemoved', deviceId: id, deviceName: device.name);
     await _repository.deleteDevice(id);
     state = state.where((d) => d.id != id).toList();
   }

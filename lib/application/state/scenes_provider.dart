@@ -22,6 +22,7 @@ class ScenesNotifier extends StateNotifier<List<Scene>> {
   Future<void> addScene(Scene scene) async {
     await _repository.saveScene(scene);
     await _loadScenes();
+    EventLogger.log(event: 'sceneCreated', sceneName: scene.name);
   }
 
   Future<void> executeScene(String id) async {
@@ -38,6 +39,8 @@ class ScenesNotifier extends StateNotifier<List<Scene>> {
   }
 
   Future<void> deleteScene(String id) async {
+    final scene = state.firstWhere((s) => s.id == id);
+    EventLogger.log(event: 'sceneDeleted', sceneName: scene.name);
     await _repository.deleteScene(id);
     state = state.where((s) => s.id != id).toList();
   }

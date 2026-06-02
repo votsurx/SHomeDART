@@ -38,10 +38,13 @@ class AppDatabase {
         await db.execute('''
           CREATE TABLE events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            deviceId TEXT NOT NULL,
-            deviceName TEXT NOT NULL,
             event TEXT NOT NULL,
+            deviceId TEXT,
+            deviceName TEXT,
+            value TEXT,
             sceneName TEXT,
+            roomName TEXT,
+            timerName TEXT,
             timestamp TEXT NOT NULL
           )
         ''');
@@ -105,10 +108,13 @@ class AppDatabase {
           await db.execute('''
             CREATE TABLE events (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
-              deviceId TEXT NOT NULL,
-              deviceName TEXT NOT NULL,
               event TEXT NOT NULL,
+              deviceId TEXT,
+              deviceName TEXT,
+              value TEXT,
               sceneName TEXT,
+              roomName TEXT,
+              timerName TEXT,
               timestamp TEXT NOT NULL
             )
           ''');
