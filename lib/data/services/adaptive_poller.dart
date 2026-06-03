@@ -11,6 +11,7 @@ class AdaptivePoller {
   final void Function(String deviceId, bool isOn) _onStateChanged;
   final void Function(String deviceId, bool isOnline) _onOnlineChanged;
   final void Function(String deviceId, List<bool> states) _onStatesChanged;
+  final void Function(String deviceId, Map<String, dynamic> properties)? onSensorUpdate;
 
   static const slowInterval = Duration(minutes: 1);
   static const verySlowInterval = Duration(minutes: 5);
@@ -27,6 +28,7 @@ class AdaptivePoller {
       this._onStateChanged,
       this._onOnlineChanged,
       this._onStatesChanged, {
+      this.onSensorUpdate,
         Duration normalInterval = const Duration(seconds: 2),
       }) : _normalInterval = normalInterval;
 
@@ -117,6 +119,33 @@ class AdaptivePoller {
                 deviceName: device.name,
                 event: realIsOn ? 'turnOn' : 'turnOff',
               );
+            }
+          }
+          // Обработка датчиков (тип sensor)
+          if (device.type == DeviceType.sensor) {
+            final sensorDps = device.properties['sensorDps'] ?? device.dpsIndex ?? 21;
+            final divider = (device.properties['sensorDivider'] as num?)?.toDouble() ?? 10.0;
+            final sensorType = device.properties['sensorType'] as String?;
+
+            final rawValue = dps[sensorDps] ?? dps[sensorDps.toString()];
+            print('Processing sensor: ${device.name}');
+            print('  sensorDps: $sensorDps, divider: $divider, rawValue: $rawValue');
+
+            if (rawValue != null) {
+              final value = (rawValue as num).toDouble() / divider;
+
+              final updatedProperties = {
+                ...device.properties,
+                if (sensorType == 'temperature') 'temperature': value,
+                if (sensorType == 'humidity') 'humidity': value,
+                if (sensorType == 'power') 'power': value,
+                if (sensorType == 'current') 'current': value,
+                if (sensorType == 'voltage') 'voltage': value,
+              };
+
+              final updated = device.copyWith(properties: updatedProperties);
+              _updateDeviceInList(updated);
+              onSensorUpdate?.call(device.id, updatedProperties);
             }
           }
         }

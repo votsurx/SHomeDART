@@ -71,6 +71,11 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
       },
     )).toList();
   }
+  void updateDeviceProperties(String id, Map<String, dynamic> properties) {
+    final device = state.firstWhere((d) => d.id == id);
+    final updated = device.copyWith(properties: properties);
+    state = state.map((d) => d.id == id ? updated : d).toList();
+  }
 
   Future<void> addDevice(Device device) async {
     await _repository.saveDevice(device);

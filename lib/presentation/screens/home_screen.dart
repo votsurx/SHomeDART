@@ -47,6 +47,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             (deviceId, states) {
           if (mounted) ref.read(devicesProvider.notifier).updateDeviceStates(deviceId, states);
         },
+        onSensorUpdate: (deviceId, properties) {
+          if (mounted) ref.read(devicesProvider.notifier).updateDeviceProperties(deviceId, properties);
+        },
         normalInterval: interval,
       );
       _poller!.start();

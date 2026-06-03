@@ -60,9 +60,7 @@ class DeviceCard extends ConsumerWidget {
       case DeviceType.switch2:
       case DeviceType.switch3:
         return _buildMultiSwitch(ref);
-      case DeviceType.sensorTemp:
-      case DeviceType.sensorMotion:
-      case DeviceType.sensorDoor:
+      case DeviceType.sensor:
         return _buildSensorInfo(ref);
       case DeviceType.curtain:
         return _buildCurtainInfo(ref);
@@ -72,7 +70,7 @@ class DeviceCard extends ConsumerWidget {
   }
 
   Widget _buildPowerButton(WidgetRef ref, String deviceId, bool isOn, String? label) {
-    final isOnline = device.state != DeviceState.offline;
+    final isOnline = device.state != DeviceState.offline && device.state != DeviceState.offline;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -123,7 +121,6 @@ class DeviceCard extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Первый ряд: каналы 1 и 2 (для 2-3 каналов) или только 1 (для 1 канала)
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(isThreeChannel ? 2 : channels, (i) {
@@ -133,7 +130,6 @@ class DeviceCard extends ConsumerWidget {
             );
           }),
         ),
-        // Второй ряд: канал 3 (только для 3-канальных)
         if (isThreeChannel) ...[
           const SizedBox(height: 4),
           Row(
@@ -148,7 +144,7 @@ class DeviceCard extends ConsumerWidget {
   }
 
   Widget _buildChannelButton(WidgetRef ref, int channel, bool isOn, bool showLabel) {
-    final isOnline = device.state != DeviceState.offline;
+    final isOnline = device.state != DeviceState.offline && device.state != DeviceState.offline;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -191,6 +187,10 @@ class DeviceCard extends ConsumerWidget {
   Widget _buildSensorInfo(WidgetRef ref) {
     final temp = device.properties['temperature'];
     final hum = device.properties['humidity'];
+    final power = device.properties['power'];
+    final current = device.properties['current'];
+    final voltage = device.properties['voltage'];
+    final sensorType = device.properties['sensorType'] as String?;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -199,8 +199,14 @@ class DeviceCard extends ConsumerWidget {
           Text('${(temp as num).toDouble()}°C', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
         if (hum != null)
           Text('${(hum as num).toDouble()}%', style: const TextStyle(fontSize: 14, color: Colors.blue)),
-        if (temp == null && hum == null)
-          const Text('---', style: TextStyle(fontSize: 22, color: Colors.grey)),
+        if (power != null)
+          Text('${(power as num).toDouble()} W', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        if (current != null)
+          Text('${(current as num).toDouble()} mA', style: const TextStyle(fontSize: 14, color: Colors.orange)),
+        if (voltage != null)
+          Text('${(voltage as num).toDouble()} V', style: const TextStyle(fontSize: 14, color: Colors.blueGrey)),
+        if (temp == null && hum == null && power == null && current == null && voltage == null)
+          Text(sensorType ?? '---', style: TextStyle(fontSize: 18, color: Colors.grey)),
         const SizedBox(height: 6),
         GestureDetector(
           onTap: () => _refreshSensorData(ref),
@@ -266,7 +272,6 @@ class DeviceCard extends ConsumerWidget {
                 TextField(controller: localKeyController, decoration: const InputDecoration(labelText: 'Local Key', prefixIcon: Icon(Icons.vpn_key))),
                 const SizedBox(height: 8),
 
-                // Версия протокола
                 DropdownButtonFormField<double>(
                   value: selectedVersion,
                   decoration: const InputDecoration(labelText: 'Версия протокола', prefixIcon: Icon(Icons.info_outline)),
@@ -277,9 +282,7 @@ class DeviceCard extends ConsumerWidget {
                     DropdownMenuItem(value: 3.5, child: Text('3.5')),
                   ],
                   onChanged: (value) {
-                    if (value != null) {
-                      setModalState(() => selectedVersion = value);
-                    }
+                    if (value != null) setModalState(() => selectedVersion = value);
                   },
                 ),
                 const SizedBox(height: 8),
@@ -363,10 +366,139 @@ class DeviceCard extends ConsumerWidget {
                     ),
                   ],
                 ),
+
+                // Кнопка "Создать датчик"
+                if (device.type != DeviceType.sensor) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showCreateSensorDialog(context, ref);
+                      },
+                      icon: const Icon(Icons.add_chart, size: 18),
+                      label: const Text('Создать датчик'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showCreateSensorDialog(BuildContext context, WidgetRef ref) {
+    SensorType selectedSensorType = SensorType.temperature;
+    final dpsController = TextEditingController(text: '21');
+    final dividerController = TextEditingController(text: '10');
+    final nameController = TextEditingController(text: '${device.name} t°');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Создать датчик'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Из устройства: ${device.name}'),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<SensorType>(
+                  value: selectedSensorType,
+                  decoration: const InputDecoration(labelText: 'Тип датчика'),
+                  items: const [
+                    DropdownMenuItem(value: SensorType.temperature, child: Text('Температура')),
+                    DropdownMenuItem(value: SensorType.humidity, child: Text('Влажность')),
+                    DropdownMenuItem(value: SensorType.power, child: Text('Мощность')),
+                    DropdownMenuItem(value: SensorType.current, child: Text('Ток')),
+                    DropdownMenuItem(value: SensorType.voltage, child: Text('Напряжение')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() {
+                        selectedSensorType = value;
+                        switch (value) {
+                          case SensorType.temperature:
+                            dpsController.text = '21';
+                            dividerController.text = '10';
+                            nameController.text = '${device.name} t°';
+                            break;
+                          case SensorType.humidity:
+                            dpsController.text = '22';
+                            dividerController.text = '10';
+                            nameController.text = '${device.name} h%';
+                            break;
+                          case SensorType.power:
+                            dpsController.text = '23';
+                            dividerController.text = '10';
+                            nameController.text = '${device.name} W';
+                            break;
+                          case SensorType.current:
+                            dpsController.text = '21';
+                            dividerController.text = '1';
+                            nameController.text = '${device.name} mA';
+                            break;
+                          case SensorType.voltage:
+                            dpsController.text = '22';
+                            dividerController.text = '10';
+                            nameController.text = '${device.name} V';
+                            break;
+                          default:
+                            break;
+                        }
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Название')),
+                const SizedBox(height: 8),
+                TextField(controller: dpsController, decoration: const InputDecoration(labelText: 'DPS индекс'), keyboardType: TextInputType.number),
+                const SizedBox(height: 8),
+                TextField(controller: dividerController, decoration: const InputDecoration(labelText: 'Делитель'), keyboardType: TextInputType.number),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+            ElevatedButton(
+              onPressed: () {
+                final dpsIndex = int.tryParse(dpsController.text) ?? 21;
+                final divider = double.tryParse(dividerController.text) ?? 10;
+
+                final sensor = Device(
+                  id: '${device.id}_sensor_${DateTime.now().millisecondsSinceEpoch}',
+                  name: nameController.text,
+                  type: DeviceType.sensor,
+                  roomId: device.roomId,
+                  isOnline: false,
+                  state: DeviceState.offline,
+                  deviceId: device.deviceId,
+                  localKey: device.localKey,
+                  address: device.address,
+                  version: device.version,
+                  dpsIndex: dpsIndex,
+                  properties: {
+                    'sensorDps': dpsIndex,
+                    'sensorDivider': divider,
+                    'sensorType': selectedSensorType.name,
+                  },
+                );
+
+                ref.read(devicesProvider.notifier).addDevice(sensor);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('✅ Датчик "${nameController.text}" создан!')),
+                );
+              },
+              child: const Text('Создать'),
+            ),
+          ],
         ),
       ),
     );
@@ -383,14 +515,24 @@ class DeviceCard extends ConsumerWidget {
       final result = await outlet.status();
       if (result['dps'] != null) {
         final dps = result['dps'] as Map<String, dynamic>;
-        final updated = device.copyWith(
-          properties: {
-            ...device.properties,
-            'temperature': dps['21'] != null ? (dps['21'] as num) / 10.0 : null,
-            'humidity': dps['22'] != null ? (dps['22'] as num).toDouble() : null,
-          },
-        );
-        ref.read(devicesProvider.notifier).updateDevice(updated);
+        final sensorDps = device.properties['sensorDps'] ?? device.dpsIndex ?? 21;
+        final divider = device.properties['sensorDivider'] ?? 10;
+        final rawValue = dps[sensorDps] ?? dps[sensorDps.toString()];
+
+        if (rawValue != null) {
+          final value = (rawValue as num).toDouble() / divider;
+          final sensorType = device.properties['sensorType'] as String?;
+
+          final updated = device.copyWith(
+            properties: {
+              ...device.properties,
+              if (sensorType == 'temperature') 'temperature': value,
+              if (sensorType == 'humidity') 'humidity': value,
+              if (sensorType == 'power') 'power': value,
+            },
+          );
+          ref.read(devicesProvider.notifier).updateDevice(updated);
+        }
       }
     } catch (e) {
       // ignore
@@ -404,9 +546,14 @@ class DeviceCard extends ConsumerWidget {
       case DeviceType.switch1:
       case DeviceType.switch2:
       case DeviceType.switch3: return Icons.toggle_on;
-      case DeviceType.sensorTemp: return Icons.thermostat;
-      case DeviceType.sensorMotion: return Icons.sensors;
-      case DeviceType.sensorDoor: return Icons.door_sliding;
+      case DeviceType.sensor:
+        final sensorType = device.properties['sensorType'] as String?;
+        switch (sensorType) {
+          case 'temperature': return Icons.thermostat;
+          case 'humidity': return Icons.water_drop;
+          case 'power': return Icons.bolt;
+          default: return Icons.sensors;
+        }
       case DeviceType.curtain: return Icons.blinds;
       case DeviceType.hvac: return Icons.ac_unit;
       default: return Icons.devices;

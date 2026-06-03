@@ -29,20 +29,27 @@ class Device with _$Device {
 
   factory Device.fromJson(Map<String, dynamic> json) => _$DeviceFromJson(json);
 }
-
 enum DeviceType {
   outlet,
   switch1,
   switch2,
   switch3,
-  sensorTemp,      // Датчик температуры
-  sensorMotion,    // Датчик движения
-  sensorDoor,      // Датчик двери
+  sensor,          // ← Единый тип для всех датчиков!
   curtain,
   hvac,
   light,
   camera,
-  button           // Zigbee кнопка
+  button,
+}
+
+enum SensorType {
+  temperature,
+  humidity,
+  power,
+  current,
+  voltage,
+  motion,
+  door,
 }
 
 enum DeviceState {
