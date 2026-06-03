@@ -10,10 +10,16 @@ import '../../presentation/screens/rooms_manage_screen.dart';
 import '../../presentation/screens/events_screen.dart';
 import '../../presentation/screens/timers_screen.dart';
 import '../../presentation/screens/statistics_screen.dart';
+import '../../presentation/screens/settings_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/',
   routes: [
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
+    ),
+
     GoRoute(
         path: '/statistics',
         builder: (context, state) => const StatisticsScreen()
