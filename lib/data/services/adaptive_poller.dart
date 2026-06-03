@@ -12,11 +12,11 @@ class AdaptivePoller {
   final void Function(String deviceId, bool isOnline) _onOnlineChanged;
   final void Function(String deviceId, List<bool> states) _onStatesChanged;
 
-  static const normalInterval = Duration(seconds: 2);
   static const slowInterval = Duration(minutes: 1);
   static const verySlowInterval = Duration(minutes: 5);
   static const maxErrorsBeforeSlowdown = 3;
 
+  final Duration _normalInterval;
   final Map<String, _DevicePollState> _states = {};
   Timer? _timer;
   List<Device> _devices = [];
@@ -26,47 +26,41 @@ class AdaptivePoller {
       this._talker,
       this._onStateChanged,
       this._onOnlineChanged,
-      this._onStatesChanged,
-      );
+      this._onStatesChanged, {
+        Duration normalInterval = const Duration(seconds: 2),
+      }) : _normalInterval = normalInterval;
 
   void start() {
-    _talker.info('AdaptivePoller started');
+    _talker.info('AdaptivePoller started (interval: ${_normalInterval.inSeconds}s)');
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
   void updateDevices(List<Device> devices) {
     _devices = devices;
-    // Удаляем состояния для несуществующих устройств
     _states.removeWhere((id, _) => !devices.any((d) => d.id == id));
   }
 
-  /// Принудительный сброс в быстрый режим (после команды из GUI)
   void forceReset(String deviceId) {
     final state = _states[deviceId];
     if (state != null) {
       state.reset();
-      _talker.debug('Force reset poller for $deviceId');
     }
   }
 
   void _tick() {
     final now = DateTime.now();
-
     for (final device in _devices) {
       if (device.deviceId == null || device.address == null) continue;
-
-      final state = _states.putIfAbsent(device.id, () => _DevicePollState());
-
+      final state = _states.putIfAbsent(device.id, () => _DevicePollState(_normalInterval));
       if (now.isAfter(state.nextPollAt)) {
         _pollDevice(device, state);
       }
     }
   }
+
   void _updateDeviceInList(Device updated) {
     final idx = _devices.indexWhere((d) => d.id == updated.id);
-    if (idx != -1) {
-      _devices[idx] = updated;
-    }
+    if (idx != -1) _devices[idx] = updated;
   }
 
   Future<void> _pollDevice(Device device, _DevicePollState state) async {
@@ -82,7 +76,7 @@ class AdaptivePoller {
 
         final dps = result['dps'] as Map<String, dynamic>;
 
-        // Проверяем многоканальные устройства
+        // Многоканальные
         final channels = device.properties['channels'] as int?;
         if (channels != null && channels > 1) {
           final currentStates = List<bool>.from(device.properties['states'] ?? List.filled(channels, false));
@@ -95,25 +89,19 @@ class AdaptivePoller {
               if (i - 1 < currentStates.length && currentStates[i - 1] != isOn) {
                 currentStates[i - 1] = isOn;
                 changed = true;
-                _talker.info('Channel $i changed: ${device.name} -> ${isOn ? "ON" : "OFF"}');
               }
             }
           }
 
           if (changed) {
             final updatedDevice = device.copyWith(
-              properties: {
-                ...device.properties,
-                'states': currentStates,
-                'isOn': currentStates.any((s) => s),
-              },
+              properties: {...device.properties, 'states': currentStates, 'isOn': currentStates.any((s) => s)},
             );
             _updateDeviceInList(updatedDevice);
             _onStatesChanged(device.id, currentStates);
-            _talker.info('States updated for ${device.name}: $currentStates');
           }
         } else {
-          // Одноканальное устройство
+          // Одноканальные
           final dpsIndex = device.dpsIndex ?? 1;
           final rawValue = dps[dpsIndex] ?? dps[dpsIndex.toString()];
 
@@ -122,7 +110,6 @@ class AdaptivePoller {
             final currentIsOn = device.properties['isOn'] == true;
 
             if (realIsOn != currentIsOn) {
-              _talker.info('State changed: ${device.name} -> ${realIsOn ? "ON" : "OFF"}');
               _onStateChanged(device.id, realIsOn);
               EventLogger.log(
                 deviceId: device.id,
@@ -144,20 +131,23 @@ class AdaptivePoller {
     }
   }
 
-  void stop() {
-    _timer?.cancel();
-  }
+  void stop() => _timer?.cancel();
 }
 
 class _DevicePollState {
   int errorCount = 0;
-  Duration interval = AdaptivePoller.normalInterval;
+  Duration interval;
+  final Duration _normalInterval; // ← храним исходный
   DateTime nextPollAt = DateTime.now();
-  bool polling = false; // ← Защита от параллельных опросов
+  bool polling = false;
+
+  _DevicePollState(Duration normalInterval)
+      : interval = normalInterval,
+        _normalInterval = normalInterval;
 
   void onSuccess() {
     errorCount = 0;
-    interval = AdaptivePoller.normalInterval;
+    interval = _normalInterval; // ← сброс на исходный
     nextPollAt = DateTime.now().add(interval);
   }
 
@@ -173,7 +163,7 @@ class _DevicePollState {
 
   void reset() {
     errorCount = 0;
-    interval = AdaptivePoller.normalInterval;
+    interval = _normalInterval; // ← сброс на исходный
     nextPollAt = DateTime.now();
   }
 }

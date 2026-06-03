@@ -8,6 +8,7 @@ import '../../application/state/devices_provider.dart';
 import '../../di/injection.dart';
 import '../../data/protocols/tuya_protocol.dart';
 import '../../data/services/adaptive_poller.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _checkOnboarding();
+    _initPoller();
+  }
+
+  Future<void> _initPoller() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seconds = prefs.getInt('poll_interval') ?? 2;
+    final interval = Duration(seconds: seconds);
+
+    if (!mounted) return;
+
+    setState(() {
+      _poller = AdaptivePoller(
+        getIt<TuyaProtocol>(),
+        getIt<Talker>(),
+            (deviceId, isOn) {
+          if (mounted) ref.read(devicesProvider.notifier).updateDeviceState(deviceId, isOn);
+        },
+            (deviceId, isOnline) {
+          if (mounted) ref.read(devicesProvider.notifier).updateOnlineState(deviceId, isOnline);
+        },
+            (deviceId, states) {
+          if (mounted) ref.read(devicesProvider.notifier).updateDeviceStates(deviceId, states);
+        },
+        normalInterval: interval,
+      );
+      _poller!.start();
+    });
   }
 
   Future<void> _checkOnboarding() async {
@@ -34,28 +62,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Запускаем поллер один раз
-    if (_poller == null) {
-      _poller = AdaptivePoller(
-        getIt<TuyaProtocol>(),
-        getIt<Talker>(),
-            (deviceId, isOn) {
-          if (mounted) ref.read(devicesProvider.notifier).updateDeviceState(deviceId, isOn);
-        },
-            (deviceId, isOnline) {
-          if (mounted) ref.read(devicesProvider.notifier).updateOnlineState(deviceId, isOnline);
-        },
-            (deviceId, states) {   // ← новый колбэк
-          if (mounted) ref.read(devicesProvider.notifier).updateDeviceStates(deviceId, states);
-        },
-      );
-      _poller!.start();
-
-      // Пробрасываем forceReset в DevicesNotifier
-      ref.read(devicesProvider.notifier).onCommandSent = (deviceId) {
-        _poller?.forceReset(deviceId);
-      };
-    }
 
     final devices = ref.watch(devicesProvider);
     _poller?.updateDevices(devices);

@@ -1,8 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/services/config_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  int _pollInterval = 2;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _pollInterval = prefs.getInt('poll_interval') ?? 2;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,6 +32,37 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Интервал опроса
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.timer, color: Colors.orange),
+              title: const Text('Интервал опроса'),
+              subtitle: Text('$_pollInterval сек'),
+              onTap: () async {
+                final selected = await showDialog<int>(
+                  context: context,
+                  builder: (ctx) => SimpleDialog(
+                    title: const Text('Интервал опроса'),
+                    children: [2, 5, 10, 30].map((s) => SimpleDialogOption(
+                      onPressed: () => Navigator.pop(ctx, s),
+                      child: Text('$s секунд'),
+                    )).toList(),
+                  ),
+                );
+                if (selected != null) {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('poll_interval', selected);
+                  setState(() => _pollInterval = selected);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Интервал изменён на $selected сек. Перезапустите приложение.')),
+                    );
+                  }
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
           // Экспорт
           Card(
             child: ListTile(
@@ -66,12 +118,12 @@ class SettingsScreen extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.info_outline, color: Colors.grey),
               title: const Text('О приложении'),
-              subtitle: const Text('SHome v2.6'),
+              subtitle: const Text('SHome v2.7'),
               onTap: () {
                 showAboutDialog(
                   context: context,
                   applicationName: 'SHome',
-                  applicationVersion: '2.6.0',
+                  applicationVersion: '2.7.0',
                   applicationLegalese: '© 2026 SHome Team',
                 );
               },
