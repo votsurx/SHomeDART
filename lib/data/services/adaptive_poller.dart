@@ -3,7 +3,7 @@ import 'package:talker/talker.dart';
 import '../../domain/models/device.dart';
 import '../protocols/tuya_protocol.dart';
 import 'event_logger.dart';
-import '../local/database.dart';
+//import '../local/database.dart';
 
 class AdaptivePoller {
   final TuyaProtocol _tuyaProtocol;
@@ -33,6 +33,7 @@ class AdaptivePoller {
   void start() {
     _talker.info('AdaptivePoller started (interval: ${_normalInterval.inSeconds}s)');
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _tick(); // Немедленный первый опрос
   }
 
   void updateDevices(List<Device> devices) {

@@ -67,8 +67,11 @@ dev_dependencies:
   share_plus: ^10.0.1
   path_provider: ^2.1.0
 
-  #
+  # razresheniya
   permission_handler: ^11.3.0
+
+  # Tests
+  sqflite_common_ffi: ^2.3.0
 
 flutter:
   uses-material-design: true

@@ -59,7 +59,17 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
 
   Future<void> _loadDevices() async {
     final devices = await _repository.getAllDevices();
-    state = devices;
+    // При старте все устройства считаем оффлайн
+    state = devices.map((d) => d.copyWith(
+      isOnline: false,
+      state: DeviceState.offline,
+      properties: {
+        ...d.properties,
+        'isOn': false,
+        if (d.properties['states'] != null)
+          'states': List<bool>.filled((d.properties['channels'] as int?) ?? 1, false),
+      },
+    )).toList();
   }
 
   Future<void> addDevice(Device device) async {

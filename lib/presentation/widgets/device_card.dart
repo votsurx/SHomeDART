@@ -72,11 +72,19 @@ class DeviceCard extends ConsumerWidget {
   }
 
   Widget _buildPowerButton(WidgetRef ref, String deviceId, bool isOn, String? label) {
+    final isOnline = device.state != DeviceState.offline;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
           onTap: () {
+            if (!isOnline) {
+              ScaffoldMessenger.of(ref.context).showSnackBar(
+                const SnackBar(content: Text('Устройство не в сети'), duration: Duration(seconds: 1)),
+              );
+              return;
+            }
             if (isOn) {
               ref.read(devicesProvider.notifier).turnOff(deviceId);
             } else {
@@ -88,12 +96,14 @@ class DeviceCard extends ConsumerWidget {
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1),
+              color: isOnline
+                  ? (isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1))
+                  : Colors.red.withValues(alpha: 0.1),
             ),
             child: Icon(
-              Icons.power_settings_new,
+              isOnline ? Icons.power_settings_new : Icons.wifi_off,
               size: 28,
-              color: isOn ? Colors.green : Colors.grey,
+              color: isOnline ? (isOn ? Colors.green : Colors.grey) : Colors.red,
             ),
           ),
         ),
@@ -138,11 +148,19 @@ class DeviceCard extends ConsumerWidget {
   }
 
   Widget _buildChannelButton(WidgetRef ref, int channel, bool isOn, bool showLabel) {
+    final isOnline = device.state != DeviceState.offline;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
           onTap: () {
+            if (!isOnline) {
+              ScaffoldMessenger.of(ref.context).showSnackBar(
+                const SnackBar(content: Text('Устройство не в сети'), duration: Duration(seconds: 1)),
+              );
+              return;
+            }
             ref.read(devicesProvider.notifier).setSwitchChannel(device.id, channel, !isOn);
           },
           child: Container(
@@ -150,12 +168,14 @@ class DeviceCard extends ConsumerWidget {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1),
+              color: isOnline
+                  ? (isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1))
+                  : Colors.red.withValues(alpha: 0.1),
             ),
             child: Icon(
-              Icons.power_settings_new,
+              isOnline ? Icons.power_settings_new : Icons.wifi_off,
               size: 24,
-              color: isOn ? Colors.green : Colors.grey,
+              color: isOnline ? (isOn ? Colors.green : Colors.grey) : Colors.red,
             ),
           ),
         ),
