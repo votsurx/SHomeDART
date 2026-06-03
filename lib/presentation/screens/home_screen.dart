@@ -45,6 +45,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             (deviceId, isOnline) {
           if (mounted) ref.read(devicesProvider.notifier).updateOnlineState(deviceId, isOnline);
         },
+            (deviceId, states) {   // ← новый колбэк
+          if (mounted) ref.read(devicesProvider.notifier).updateDeviceStates(deviceId, states);
+        },
       );
       _poller!.start();
 

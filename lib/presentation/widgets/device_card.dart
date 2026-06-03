@@ -206,10 +206,11 @@ class DeviceCard extends ConsumerWidget {
     final nameController = TextEditingController(text: device.name);
     final localKeyController = TextEditingController(text: device.localKey ?? '');
     final addressController = TextEditingController(text: device.address ?? '');
+    final dpsController = TextEditingController(text: device.dpsIndex?.toString() ?? '1');
     final rooms = ref.watch(roomsProvider);
     String selectedRoomId = device.roomId;
+    double selectedVersion = device.version ?? 3.3;
 
-    // Контроллеры для DPS каналов
     final channelCount = device.type == DeviceType.switch3 ? 3 : (device.type == DeviceType.switch2 ? 2 : 1);
     final dpsControllers = List.generate(
       channelCount,
@@ -229,11 +230,9 @@ class DeviceCard extends ConsumerWidget {
                 Text(device.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
 
-                // Название
                 TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Название', prefixIcon: Icon(Icons.edit))),
                 const SizedBox(height: 8),
 
-                // Device ID — открытый
                 TextField(
                   controller: TextEditingController(text: device.deviceId ?? ''),
                   decoration: const InputDecoration(labelText: 'Device ID', prefixIcon: Icon(Icons.fingerprint)),
@@ -241,15 +240,30 @@ class DeviceCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // IP Адрес
                 TextField(controller: addressController, decoration: const InputDecoration(labelText: 'IP Адрес', prefixIcon: Icon(Icons.wifi))),
                 const SizedBox(height: 8),
 
-                // Local Key — открытый
                 TextField(controller: localKeyController, decoration: const InputDecoration(labelText: 'Local Key', prefixIcon: Icon(Icons.vpn_key))),
                 const SizedBox(height: 8),
 
-                // Комната
+                // Версия протокола
+                DropdownButtonFormField<double>(
+                  value: selectedVersion,
+                  decoration: const InputDecoration(labelText: 'Версия протокола', prefixIcon: Icon(Icons.info_outline)),
+                  items: const [
+                    DropdownMenuItem(value: 3.1, child: Text('3.1')),
+                    DropdownMenuItem(value: 3.3, child: Text('3.3')),
+                    DropdownMenuItem(value: 3.4, child: Text('3.4')),
+                    DropdownMenuItem(value: 3.5, child: Text('3.5')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setModalState(() => selectedVersion = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+
                 DropdownButtonFormField<String>(
                   value: selectedRoomId,
                   decoration: const InputDecoration(labelText: 'Комната', prefixIcon: Icon(Icons.meeting_room)),
@@ -260,7 +274,6 @@ class DeviceCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
-                // DPS поля в зависимости от типа
                 if (device.type == DeviceType.switch1 || device.type == DeviceType.switch2 || device.type == DeviceType.switch3) ...[
                   Text('DPS каналов:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700], fontSize: 13)),
                   const SizedBox(height: 4),
@@ -270,10 +283,7 @@ class DeviceCard extends ConsumerWidget {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: TextField(
                         controller: dpsControllers[i],
-                        decoration: InputDecoration(
-                          labelText: 'DPS канала ${i + 1}',
-                          prefixIcon: const Icon(Icons.tune),
-                        ),
+                        decoration: InputDecoration(labelText: 'DPS канала ${i + 1}', prefixIcon: const Icon(Icons.tune)),
                         keyboardType: TextInputType.number,
                       ),
                     ),
@@ -298,6 +308,7 @@ class DeviceCard extends ConsumerWidget {
                             localKey: localKeyController.text.isNotEmpty ? localKeyController.text : null,
                             dpsIndex: int.tryParse(dpsControllers.first.text) ?? 1,
                             roomId: selectedRoomId,
+                            version: selectedVersion,
                           );
                           ref.read(devicesProvider.notifier).updateDevice(updated);
                           Navigator.pop(ctx);

@@ -10,6 +10,7 @@ class AdaptivePoller {
   final Talker _talker;
   final void Function(String deviceId, bool isOn) _onStateChanged;
   final void Function(String deviceId, bool isOnline) _onOnlineChanged;
+  final void Function(String deviceId, List<bool> states) _onStatesChanged;
 
   static const normalInterval = Duration(seconds: 2);
   static const slowInterval = Duration(minutes: 1);
@@ -25,6 +26,7 @@ class AdaptivePoller {
       this._talker,
       this._onStateChanged,
       this._onOnlineChanged,
+      this._onStatesChanged,
       );
 
   void start() {
@@ -60,6 +62,12 @@ class AdaptivePoller {
       }
     }
   }
+  void _updateDeviceInList(Device updated) {
+    final idx = _devices.indexWhere((d) => d.id == updated.id);
+    if (idx != -1) {
+      _devices[idx] = updated;
+    }
+  }
 
   Future<void> _pollDevice(Device device, _DevicePollState state) async {
     if (state.polling) return;
@@ -73,48 +81,60 @@ class AdaptivePoller {
         _onOnlineChanged(device.id, true);
 
         final dps = result['dps'] as Map<String, dynamic>;
-        final dpsIndex = device.dpsIndex ?? 1;
-        final rawValue = dps['$dpsIndex'] ?? dps[dpsIndex.toString()];
 
-        if (rawValue != null) {
-          final realIsOn = rawValue == true || rawValue == 1;
-          final currentIsOn = device.properties['isOn'] == true;
+        // Проверяем многоканальные устройства
+        final channels = device.properties['channels'] as int?;
+        if (channels != null && channels > 1) {
+          final currentStates = List<bool>.from(device.properties['states'] ?? List.filled(channels, false));
+          var changed = false;
 
-          if (realIsOn != currentIsOn) {
-            _talker.info('State changed: ${device.name} -> ${realIsOn ? "ON" : "OFF"}');
-            _onStateChanged(device.id, realIsOn);
-            EventLogger.log(
-              deviceId: device.id,
-              deviceName: device.name,
-              event: realIsOn ? 'turnOn' : 'turnOff',
-            );
+          for (var i = 1; i <= channels; i++) {
+            final val = dps[i] ?? dps[i.toString()];
+            if (val != null) {
+              final isOn = val == true || val == 1;
+              if (i - 1 < currentStates.length && currentStates[i - 1] != isOn) {
+                currentStates[i - 1] = isOn;
+                changed = true;
+                _talker.info('Channel $i changed: ${device.name} -> ${isOn ? "ON" : "OFF"}');
+              }
+            }
           }
-        }
 
-        // Энергомониторинг — если есть DPS 23 (мощность)
-        if (dps['23'] != null) {
-          final power = double.parse(dps['23'].toString()) / 10.0;
-          final voltage = dps['22'] != null ? double.parse(dps['22'].toString()) / 10.0 : 0.0;
-          final current = dps['21'] != null ? double.parse(dps['21'].toString()) : 0.0;
-          final energyIncrement = dps['1'] == true ? power * (2.0 / 3600.0) : 0;
-
-          try {
-            await AppDatabase.upsertEnergyLog(
-              deviceId: device.id,
-              deviceName: device.name,
-              power: power,
-              voltage: voltage,
-              current: current,
-              energyIncrement: energyIncrement.toDouble(),
+          if (changed) {
+            final updatedDevice = device.copyWith(
+              properties: {
+                ...device.properties,
+                'states': currentStates,
+                'isOn': currentStates.any((s) => s),
+              },
             );
-          } catch (e) {
-            // Игнорируем ошибки записи энергии
+            _updateDeviceInList(updatedDevice);
+            _onStatesChanged(device.id, currentStates);
+            _talker.info('States updated for ${device.name}: $currentStates');
+          }
+        } else {
+          // Одноканальное устройство
+          final dpsIndex = device.dpsIndex ?? 1;
+          final rawValue = dps[dpsIndex] ?? dps[dpsIndex.toString()];
+
+          if (rawValue != null) {
+            final realIsOn = rawValue == true || rawValue == 1;
+            final currentIsOn = device.properties['isOn'] == true;
+
+            if (realIsOn != currentIsOn) {
+              _talker.info('State changed: ${device.name} -> ${realIsOn ? "ON" : "OFF"}');
+              _onStateChanged(device.id, realIsOn);
+              EventLogger.log(
+                deviceId: device.id,
+                deviceName: device.name,
+                event: realIsOn ? 'turnOn' : 'turnOff',
+              );
+            }
           }
         }
       } else {
         state.onError();
         _onOnlineChanged(device.id, false);
-        _talker.debug('Poll failed for ${device.name}, interval: ${state.interval}');
       }
     } catch (e) {
       state.onError();

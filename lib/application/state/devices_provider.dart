@@ -1,11 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/device.dart';
-import '../../domain/commands/device_command.dart';
-import '../../domain/commands/device_command_handler.dart';
 import '../../domain/repositories/device_repository.dart';
 import '../../data/protocols/tuya_protocol.dart';
 import '../../di/injection.dart';
-import 'package:uuid/uuid.dart';
 import '../../data/services/event_logger.dart';
 
 final devicesProvider = StateNotifierProvider<DevicesNotifier, List<Device>>((ref) {
@@ -14,9 +11,7 @@ final devicesProvider = StateNotifierProvider<DevicesNotifier, List<Device>>((re
 
 class DevicesNotifier extends StateNotifier<List<Device>> {
   final DeviceRepository _repository = getIt<DeviceRepository>();
-  final DeviceCommandHandler _commandHandler = getIt<DeviceCommandHandler>();
   final TuyaProtocol _tuyaProtocol = getIt<TuyaProtocol>();
-  final _uuid = const Uuid();
 
   /// Колбэк для сброса поллера при ручной команде
   void Function(String)? onCommandSent;
@@ -24,6 +19,7 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
   DevicesNotifier() : super([]) {
     _loadDevices();
   }
+
   List<Device> get devices => state;
 
   void updateDeviceLocal(Device device) {
@@ -33,7 +29,21 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
   void updateDeviceState(String id, bool isOn) {
     final device = state.firstWhere((d) => d.id == id);
     final updated = device.copyWith(
-      properties: {...device.properties, 'isOn': isOn},
+      properties: {
+        ...device.properties,
+        'isOn': isOn,
+        // Если многоканальное — обновляем states
+        if (device.properties['states'] != null)
+          'states': device.properties['states'],
+      },
+    );
+    state = state.map((d) => d.id == id ? updated : d).toList();
+  }
+
+  void updateDeviceStates(String id, List<bool> states) {
+    final device = state.firstWhere((d) => d.id == id);
+    final updated = device.copyWith(
+      properties: {...device.properties, 'states': states, 'isOn': states.any((s) => s)},
     );
     state = state.map((d) => d.id == id ? updated : d).toList();
   }
@@ -58,63 +68,35 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     EventLogger.log(event: 'deviceAdded', deviceId: device.id, deviceName: device.name);
   }
 
-  // ✅ ВКЛ — оптимистично
   Future<bool> turnOn(String id) async {
     final device = state.firstWhere((d) => d.id == id);
     EventLogger.log(deviceId: id, deviceName: device.name, event: 'turnOn');
     onCommandSent?.call(id);
     _updateLocalState(id, true);
-
-    final success = await _commandHandler.execute(DeviceCommand(
-      id: _uuid.v4(),
-      deviceId: id,
-      type: DeviceCommandType.turnOn,
-    ));
-
-    if (!success) {
-      _updateLocalState(id, false);
-    }
+    final success = await _tuyaProtocol.turnOn(device);
+    if (!success) _updateLocalState(id, false);
     return success;
   }
 
-  // ✅ ВЫКЛ — оптимистично
   Future<bool> turnOff(String id) async {
     final device = state.firstWhere((d) => d.id == id);
     EventLogger.log(deviceId: id, deviceName: device.name, event: 'turnOff');
     onCommandSent?.call(id);
     _updateLocalState(id, false);
-
-    final success = await _commandHandler.execute(DeviceCommand(
-      id: _uuid.v4(),
-      deviceId: id,
-      type: DeviceCommandType.turnOff,
-    ));
-
-    if (!success) {
-      _updateLocalState(id, true);
-    }
+    final success = await _tuyaProtocol.turnOff(device);
+    if (!success) _updateLocalState(id, true);
     return success;
   }
 
-  // ✅ Многоканальные — оптимистично
-  Future<bool> setSwitchChannel(String id, int channel, bool state) async {
+  Future<bool> setSwitchChannel(String id, int channel, bool value) async {
+    final device = state.firstWhere((d) => d.id == id);
     onCommandSent?.call(id);
-    _updateChannelState(id, channel, state);
-
-    final success = await _commandHandler.execute(DeviceCommand(
-      id: _uuid.v4(),
-      deviceId: id,
-      type: DeviceCommandType.setSwitchChannel,
-      params: {'channel': channel, 'state': state},
-    ));
-
-    if (!success) {
-      _updateChannelState(id, channel, !state);
-    }
+    _updateChannelState(id, channel, value);
+    final success = await _tuyaProtocol.setSwitchChannel(device, channel, value);
+    if (!success) _updateChannelState(id, channel, !value);
     return success;
   }
 
-  // ✅ Вспомогательные методы
   void _updateLocalState(String id, bool isOn) {
     final device = state.firstWhere((d) => d.id == id);
     final updated = device.copyWith(
@@ -136,20 +118,14 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     state = state.map((d) => d.id == id ? updated : d).toList();
   }
 
-  // Остальные методы
   Future<bool> pingDevice(String id) async {
     return await _repository.pingDevice(id);
   }
 
   Future<bool> setCurtainPosition(String id, int position) async {
-    final success = await _commandHandler.execute(DeviceCommand(
-      id: _uuid.v4(),
-      deviceId: id,
-      type: DeviceCommandType.setCurtainPosition,
-      params: {'position': position},
-    ));
+    final device = state.firstWhere((d) => d.id == id);
+    final success = await _tuyaProtocol.setCurtainPosition(device, position);
     if (success) {
-      final device = state.firstWhere((d) => d.id == id);
       final updated = device.copyWith(
         properties: {...device.properties, 'position': position},
       );
@@ -163,14 +139,9 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
   }
 
   Future<bool> setBrightness(String id, int brightness) async {
-    final success = await _commandHandler.execute(DeviceCommand(
-      id: _uuid.v4(),
-      deviceId: id,
-      type: DeviceCommandType.setBrightness,
-      params: {'brightness': brightness},
-    ));
+    final device = state.firstWhere((d) => d.id == id);
+    final success = await _tuyaProtocol.setBrightness(device, brightness);
     if (success) {
-      final device = state.firstWhere((d) => d.id == id);
       final updated = device.copyWith(
         properties: {...device.properties, 'brightness': brightness, 'isOn': brightness > 0},
       );

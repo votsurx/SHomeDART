@@ -21,9 +21,12 @@ class TuyaProtocol {
     try {
       _talker.info('Turning ON device: ${device.name}');
       final outlet = _createOutletDevice(device);
-      final dpsIndex = (device.dpsIndex ?? 1).toString();
-      await outlet.setValue(index: dpsIndex, value: true);
-      _talker.info('Device ${device.name} turned ON successfully (DPS $dpsIndex)');
+      if (device.dpsIndex == null || device.dpsIndex == 1) {
+        await outlet.turnOn();
+      } else {
+        await outlet.setValue(index: device.dpsIndex!, value: true);
+      }
+      _talker.info('Device ${device.name} turned ON successfully');
       return true;
     } catch (e, stackTrace) {
       _talker.error('Failed to turn ON ${device.name}', e, stackTrace);
@@ -35,9 +38,12 @@ class TuyaProtocol {
     try {
       _talker.info('Turning OFF device: ${device.name}');
       final outlet = _createOutletDevice(device);
-      final dpsIndex = (device.dpsIndex ?? 1).toString();
-      await outlet.setValue(index: dpsIndex, value: false);
-      _talker.info('Device ${device.name} turned OFF successfully (DPS $dpsIndex)');
+      if (device.dpsIndex == null || device.dpsIndex == 1) {
+        await outlet.turnOff();
+      } else {
+        await outlet.setValue(index: device.dpsIndex!, value: false);
+      }
+      _talker.info('Device ${device.name} turned OFF successfully');
       return true;
     } catch (e, stackTrace) {
       _talker.error('Failed to turn OFF ${device.name}', e, stackTrace);
@@ -66,10 +72,13 @@ class TuyaProtocol {
 
   Future<bool> setSwitchChannel(Device device, int channel, bool state) async {
     try {
+      _talker.info('Setting channel $channel to $state on ${device.name}');
       final outlet = _createOutletDevice(device);
-      await outlet.setValue(index: channel.toString(), value: state ? 1 : 0);
+      await outlet.setValue(index: channel, value: state);
+      _talker.info('Channel $channel set successfully');
       return true;
     } catch (e) {
+      _talker.error('Failed to set channel: $e');
       return false;
     }
   }
