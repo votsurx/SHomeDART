@@ -1,8 +1,3 @@
-/// Экран настроек приложения.
-/// Позволяет изменить интервал опроса устройств (2/5/10/30 сек),
-/// экспортировать/импортировать конфигурацию в JSON-файл,
-/// посмотреть информацию о приложении.
-library;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/services/config_service.dart';
@@ -23,10 +18,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  /// Загружает сохранённый интервал опроса из SharedPreferences.
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() => _pollInterval = prefs.getInt('poll_interval') ?? 2);
+    setState(() {
+      _pollInterval = prefs.getInt('poll_interval') ?? 2;
+    });
   }
 
   @override
@@ -36,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // --- Интервал опроса ---
+          // Интервал опроса
           Card(
             child: ListTile(
               leading: const Icon(Icons.timer, color: Colors.orange),
@@ -67,13 +63,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // --- Экспорт конфигурации ---
+
+          // Резервная копия
           Card(
             child: ListTile(
+              leading: const Icon(Icons.backup, color: Colors.blue),
+              title: const Text('Резервная копия'),
+              subtitle: const Text('Экспорт / Импорт конфигурации'),
+              onTap: () => _showBackupMenu(context),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // О приложении
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.info_outline, color: Colors.grey),
+              title: const Text('О приложении'),
+              subtitle: const Text('SHome v2.11'),
+              onTap: () {
+                showAboutDialog(
+                  context: context,
+                  applicationName: 'SHome',
+                  applicationVersion: '2.11.0',
+                  applicationLegalese: '© 2026 SHome Team',
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Показывает меню выбора: Экспорт / Импорт из файла / Восстановить из приложения
+  void _showBackupMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Экспорт
+            ListTile(
               leading: const Icon(Icons.file_upload, color: Colors.blue),
               title: const Text('Экспортировать'),
-              subtitle: const Text('Сохранить конфигурацию в файл'),
+              subtitle: const Text('Сохранить и поделиться'),
               onTap: () async {
+                Navigator.pop(ctx);
                 try {
                   await ConfigService.exportConfig();
                   if (context.mounted) {
@@ -81,51 +118,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка экспорта: $e')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка: $e')));
                   }
                 }
               },
             ),
-          ),
-          const SizedBox(height: 12),
-          // --- Импорт конфигурации ---
-          Card(
-            child: ListTile(
+            // Импорт из файла
+            ListTile(
               leading: const Icon(Icons.file_download, color: Colors.green),
-              title: const Text('Импортировать'),
-              subtitle: const Text('Восстановить конфигурацию из файла'),
+              title: const Text('Импортировать из файла'),
+              subtitle: const Text('Выбрать файл на устройстве'),
               onTap: () async {
+                Navigator.pop(ctx);
                 try {
                   await ConfigService.importConfig();
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Импорт выполнен! Перезапустите приложение.')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Импорт выполнен!')));
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка импорта: $e')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка: $e')));
                   }
                 }
               },
             ),
-          ),
-          const SizedBox(height: 24),
-          // --- О приложении ---
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info_outline, color: Colors.grey),
-              title: const Text('О приложении'),
-              subtitle: const Text('SHome v2.7'),
-              onTap: () {
-                showAboutDialog(
-                  context: context,
-                  applicationName: 'SHome',
-                  applicationVersion: '2.7.0',
-                  applicationLegalese: '© 2026 SHome Team',
-                );
+            // Восстановить из приложения
+            ListTile(
+              leading: const Icon(Icons.restore, color: Colors.teal),
+              title: const Text('Восстановить из приложения'),
+              subtitle: const Text('Импорт из сохранённой копии'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                try {
+                  await ConfigService.quickImport();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Импорт выполнен!')));
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('❌ ${e.toString().replaceFirst('Exception: ', '')}')),
+                    );
+                  }
+                }
               },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

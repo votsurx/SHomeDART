@@ -5,7 +5,7 @@
 library;
 import 'dart:convert';
 import 'dart:io';
-//import 'package:path_provider/path_provider.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../local/database.dart';
@@ -13,32 +13,41 @@ import '../local/entities/device_entity.dart';
 import '../local/entities/room_entity.dart';
 import '../local/entities/scene_entity.dart';
 import '../../domain/models/device_timer.dart';
-import 'package:permission_handler/permission_handler.dart';
+//import 'package:permission_handler/permission_handler.dart';
 
 class ConfigService {
   /// Экспортирует конфигурацию в JSON-файл и открывает системный диалог "Поделиться".
   /// Запрашивает разрешение на запись файлов.
   /// Сохраняет файл в папку Downloads как shome_backup.json.
   static Future<void> exportConfig() async {
-    if (await Permission.storage.request().isGranted) {
-      final config = await _buildConfigJson();
+    final config = await _buildConfigJson();
 
-      // Сохраняем в общедоступную папку Downloads
-      final dir = Directory('/storage/emulated/0/Download');
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/shome_backup.json');
+    await file.writeAsString(config);
 
-      final file = File('${dir.path}/shome_backup.json');
-      await file.writeAsString(config);
+    print('File saved to: ${file.path}');
+    print('File exists: ${await file.exists()}');
+    print('File size: ${await file.length()} bytes');
 
-      // Открываем системный диалог "Поделиться"
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Резервная копия SHome',
-      );
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      text: 'Резервная копия SHome',
+    );
+  }
+  /// Быстрый импорт из папки приложения (без выбора файла)
+  static Future<void> quickImport() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/shome_backup.json');
+
+    print('Looking for file at: ${file.path}');
+    print('File exists: ${await file.exists()}');
+
+    if (await file.exists()) {
+      final jsonString = await file.readAsString();
+      await _restoreFromJson(jsonString);
     } else {
-      throw Exception('Нет разрешения на запись файлов');
+      throw Exception('Файл резервной копии не найден в папке приложения');
     }
   }
 
