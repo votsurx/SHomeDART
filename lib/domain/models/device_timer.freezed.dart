@@ -20,12 +20,22 @@ DeviceTimer _$DeviceTimerFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$DeviceTimer {
+  /// Уникальный идентификатор таймера (UUID)
   String get id => throw _privateConstructorUsedError;
+
+  /// ID устройства, к которому применяется команда
   String get deviceId => throw _privateConstructorUsedError;
+
+  /// Название устройства для отображения
   String get deviceName => throw _privateConstructorUsedError;
-  String get command =>
-      throw _privateConstructorUsedError; // 'turnOn', 'turnOff'
+
+  /// Команда: 'turnOn' или 'turnOff'
+  String get command => throw _privateConstructorUsedError;
+
+  /// Время выполнения команды
   DateTime get executeAt => throw _privateConstructorUsedError;
+
+  /// Флаг выполнения (true — уже выполнено, не активно)
   bool get executed => throw _privateConstructorUsedError;
 
   /// Serializes this DeviceTimer to a JSON map.
@@ -184,17 +194,27 @@ class _$DeviceTimerImpl implements _DeviceTimer {
   factory _$DeviceTimerImpl.fromJson(Map<String, dynamic> json) =>
       _$$DeviceTimerImplFromJson(json);
 
+  /// Уникальный идентификатор таймера (UUID)
   @override
   final String id;
+
+  /// ID устройства, к которому применяется команда
   @override
   final String deviceId;
+
+  /// Название устройства для отображения
   @override
   final String deviceName;
+
+  /// Команда: 'turnOn' или 'turnOff'
   @override
   final String command;
-// 'turnOn', 'turnOff'
+
+  /// Время выполнения команды
   @override
   final DateTime executeAt;
+
+  /// Флаг выполнения (true — уже выполнено, не активно)
   @override
   final bool executed;
 
@@ -253,16 +273,27 @@ abstract class _DeviceTimer implements DeviceTimer {
   factory _DeviceTimer.fromJson(Map<String, dynamic> json) =
       _$DeviceTimerImpl.fromJson;
 
+  /// Уникальный идентификатор таймера (UUID)
   @override
   String get id;
+
+  /// ID устройства, к которому применяется команда
   @override
   String get deviceId;
+
+  /// Название устройства для отображения
   @override
   String get deviceName;
+
+  /// Команда: 'turnOn' или 'turnOff'
   @override
-  String get command; // 'turnOn', 'turnOff'
+  String get command;
+
+  /// Время выполнения команды
   @override
   DateTime get executeAt;
+
+  /// Флаг выполнения (true — уже выполнено, не активно)
   @override
   bool get executed;
 

@@ -56,6 +56,11 @@ class SceneTrigger with _$SceneTrigger {
     @Default(RepeatType.once) RepeatType repeat,
     /// Дни недели для weekly (1=Пн, 7=Вс)
     List<int>? repeatDays,
+    // Новые поля для датчиков
+    String? sensorDeviceId,    // ID датчика
+    String? sensorCondition,   // temperature_above, temperature_below, humidity_above, humidity_below
+    double? sensorThreshold,   // Пороговое значение
+    String? lastExecuted,      // Время последнего выполнения (ISO8601)
   }) = _SceneTrigger;
 
   factory SceneTrigger.fromJson(Map<String, dynamic> json) => _$SceneTriggerFromJson(json);

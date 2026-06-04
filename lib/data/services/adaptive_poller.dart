@@ -9,6 +9,9 @@ import 'package:talker/talker.dart';
 import '../../domain/models/device.dart';
 import '../protocols/tuya_protocol.dart';
 import 'event_logger.dart';
+import '../../di/injection.dart';
+import '../../domain/repositories/scene_repository.dart';
+import '../../domain/models/scene.dart';
 
 class AdaptivePoller {
   final TuyaProtocol _tuyaProtocol;
@@ -163,6 +166,7 @@ class AdaptivePoller {
               final updated = device.copyWith(properties: updatedProperties);
               _updateDeviceInList(updated);
               onSensorUpdate?.call(device.id, updatedProperties);
+              _checkSensorTriggers(device, dps);
             }
           }
         }
@@ -180,6 +184,68 @@ class AdaptivePoller {
   }
 
   void stop() => _timer?.cancel();
+}
+
+/// Проверяет сенсорные триггеры для сцен.
+/// Сравнивает текущие показания датчика с порогами из активных сцен.
+/// При срабатывании выполняет сцену.
+Future<void> _checkSensorTriggers(Device sensorDevice, Map<String, dynamic> dps) async {
+  try {
+    final sceneRepo = getIt<SceneRepository>();
+    final scenes = await sceneRepo.getAllScenes();
+
+    final tempDps = sensorDevice.properties['sensorDps'] ?? sensorDevice.dpsIndex ?? 21;
+    final divider = sensorDevice.properties['sensorDivider'] ?? 10;
+    final rawValue = dps[tempDps] ?? dps[tempDps.toString()];
+
+    if (rawValue == null) return;
+
+    final currentValue = (rawValue as num).toDouble() / divider;
+    final sensorType = sensorDevice.properties['sensorType'] as String?;
+    final now = DateTime.now();
+
+    for (final scene in scenes) {
+      final trigger = scene.trigger;
+      if (trigger == null ||
+          trigger.sensorDeviceId != sensorDevice.id ||
+          trigger.type != TriggerType.deviceState) {
+        continue;
+      }
+
+      bool shouldExecute = false;
+
+      if (sensorType == 'temperature' || (trigger.sensorCondition?.contains('temperature') ?? false)) {
+        if (trigger.sensorCondition == 'temperature_above' && currentValue > (trigger.sensorThreshold ?? 30)) {
+          shouldExecute = true;
+        } else if (trigger.sensorCondition == 'temperature_below' && currentValue < (trigger.sensorThreshold ?? 18)) {
+          shouldExecute = true;
+        }
+      } else if (sensorType == 'humidity' || (trigger.sensorCondition?.contains('humidity') ?? false)) {
+        if (trigger.sensorCondition == 'humidity_above' && currentValue > (trigger.sensorThreshold ?? 80)) {
+          shouldExecute = true;
+        } else if (trigger.sensorCondition == 'humidity_below' && currentValue < (trigger.sensorThreshold ?? 40)) {
+          shouldExecute = true;
+        }
+      }
+
+      if (shouldExecute) {
+        final lastExecuted = trigger.lastExecuted != null ? DateTime.tryParse(trigger.lastExecuted!) : null;
+        if (lastExecuted == null || now.difference(lastExecuted).inMinutes >= 5) {
+          final talker = getIt<Talker>();
+          talker.info('Sensor trigger activated: ${scene.name} (value: $currentValue, threshold: ${trigger.sensorThreshold})');
+          await sceneRepo.executeScene(scene);
+
+          final updatedScene = scene.copyWith(
+            trigger: scene.trigger?.copyWith(lastExecuted: now.toIso8601String()),
+          );
+          await sceneRepo.saveScene(updatedScene);
+        }
+      }
+    }
+  } catch (e, stackTrace) {
+    final talker = getIt<Talker>();
+    talker.error('Error checking sensor triggers', e, stackTrace);
+  }
 }
 
 /// Состояние опроса для одного устройства.

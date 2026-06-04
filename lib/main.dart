@@ -2,6 +2,7 @@
 /// Инициализирует DI (GetIt), запускает фоновые сервисы (TimerEngine, AutomationEngine).
 /// Создаёт комнаты по умолчанию при первом запуске.
 /// Запускает корневой виджет SHomeApp.
+library;
 import 'package:flutter/material.dart';
 import 'di/injection.dart';
 import 'domain/models/room.dart';
@@ -9,6 +10,7 @@ import 'domain/repositories/room_repository.dart';
 import 'data/services/automation_engine.dart';
 import 'data/services/timer_engine.dart';
 import 'app.dart';
+import 'data/services/test_data_generator.dart';
 
 void main() {
   // Инициализация Flutter
@@ -23,6 +25,9 @@ void main() {
 
   // Создание комнат по умолчанию (если БД пустая)
   _addDefaultRooms();
+
+  // Генерируем тестовые данные один раз
+  TestDataGenerator.generateSensorData();
 
   // Запуск приложения
   runApp(const SHomeApp());

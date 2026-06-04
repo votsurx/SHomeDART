@@ -1,5 +1,6 @@
 /// Экран сцен — создание, редактирование и выполнение сценариев автоматизации.
-/// Сцены могут запускаться вручную (тап) или по времени (через AutomationEngine).
+/// Сцены могут запускаться вручную (тап), по времени (через AutomationEngine)
+/// или по датчику (через AdaptivePoller).
 /// Поддерживаются повторы: один раз, каждый день, по дням недели.
 /// Долгое нажатие открывает меню редактирования/удаления.
 library;
@@ -32,9 +33,7 @@ class ScenesScreen extends ConsumerWidget {
           final scene = scenes[index];
           return Card(
             child: InkWell(
-              // Тап — выполнить сцену
               onTap: () => ref.read(scenesProvider.notifier).executeScene(scene.id),
-              // Долгое нажатие — меню
               onLongPress: () => _showSceneMenu(context, ref, scene),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
@@ -54,13 +53,17 @@ class ScenesScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    // Информация о триггере
                     if (scene.trigger != null && scene.trigger!.type != TriggerType.manual) ...[
-                      Text('⏰ ${scene.trigger!.time}', style: const TextStyle(fontSize: 11)),
-                      if (scene.trigger!.repeat != RepeatType.once) ...[
-                        Text('🔄 ${_repeatLabel(scene.trigger!.repeat)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                        if (scene.trigger!.repeatDays?.isNotEmpty == true)
-                          Text(_daysLabel(scene.trigger!.repeatDays), style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                      if (scene.trigger!.type == TriggerType.time) ...[
+                        Text('⏰ ${scene.trigger!.time}', style: const TextStyle(fontSize: 11)),
+                        if (scene.trigger!.repeat != RepeatType.once) ...[
+                          Text('🔄 ${_repeatLabel(scene.trigger!.repeat)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                          if (scene.trigger!.repeatDays?.isNotEmpty == true)
+                            Text(_daysLabel(scene.trigger!.repeatDays), style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                        ],
+                      ] else if (scene.trigger!.type == TriggerType.deviceState) ...[
+                        Text('🌡️ ${scene.trigger!.sensorCondition ?? ""} ${scene.trigger!.sensorThreshold ?? ""}',
+                            style: const TextStyle(fontSize: 10)),
                       ],
                     ],
                     Text('${scene.actions.length} действ.', style: const TextStyle(fontSize: 9, color: Colors.grey)),
@@ -78,7 +81,6 @@ class ScenesScreen extends ConsumerWidget {
     );
   }
 
-  /// Человекочитаемая метка повтора.
   String _repeatLabel(RepeatType repeat) {
     switch (repeat) {
       case RepeatType.daily: return 'Каждый день';
@@ -88,14 +90,12 @@ class ScenesScreen extends ConsumerWidget {
     }
   }
 
-  /// Форматирует список дней недели.
   String _daysLabel(List<int>? days) {
     if (days == null || days.isEmpty) return '';
     final names = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return days.map((d) => names[d]).join(', ');
   }
 
-  /// Меню при долгом нажатии на сцену.
   void _showSceneMenu(BuildContext context, WidgetRef ref, Scene scene) {
     showModalBottomSheet(
       context: context,
@@ -119,14 +119,11 @@ class ScenesScreen extends ConsumerWidget {
     );
   }
 
-  /// Диалог создания/редактирования сцены.
-  /// Поддерживает ручной и time-триггеры, выбор устройств с ВКЛ/ВЫКЛ.
   void _showCreateSceneDialog(BuildContext context, WidgetRef ref, {Scene? existingScene}) {
     final isEditing = existingScene != null;
     final nameController = TextEditingController(text: existingScene?.name ?? '');
     final allDevices = ref.read(devicesProvider);
 
-    // Только управляемые устройства (исключаем датчики)
     final devices = allDevices.where((d) {
       return d.type == DeviceType.outlet || d.type == DeviceType.switch1 ||
           d.type == DeviceType.switch2 || d.type == DeviceType.switch3 || d.type == DeviceType.light;
@@ -144,6 +141,13 @@ class ScenesScreen extends ConsumerWidget {
     String repeatType = existingScene?.trigger?.repeat.name ?? 'once';
     final Set<int> selectedDays = Set.from(existingScene?.trigger?.repeatDays ?? []);
 
+    // Переменные для сенсорного триггера
+    String? selectedSensorId = existingScene?.trigger?.sensorDeviceId;
+    String selectedSensorCondition = existingScene?.trigger?.sensorCondition ?? 'temperature_above';
+    final sensorThresholdController = TextEditingController(
+        text: '${existingScene?.trigger?.sensorThreshold ?? 30}'
+    );
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -158,11 +162,17 @@ class ScenesScreen extends ConsumerWidget {
                 const Text('Тип запуска:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 SegmentedButton<String>(
-                  segments: const [ButtonSegment(value: 'manual', label: Text('Вручную')), ButtonSegment(value: 'time', label: Text('По времени'))],
+                  segments: const [
+                    ButtonSegment(value: 'manual', label: Text('Вручную')),
+                    ButtonSegment(value: 'time', label: Text('По времени')),
+                    ButtonSegment(value: 'sensor', label: Text('По датчику')),
+                  ],
                   selected: {triggerType},
                   onSelectionChanged: (value) => setDialogState(() => triggerType = value.first),
                 ),
                 const SizedBox(height: 16),
+
+                // ====== Триггер по времени ======
                 if (triggerType == 'time') ...[
                   ListTile(
                     title: Text('${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}'),
@@ -183,6 +193,37 @@ class ScenesScreen extends ConsumerWidget {
                   ],
                   const SizedBox(height: 16),
                 ],
+
+                // ====== Триггер по датчику ======
+                if (triggerType == 'sensor') ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedSensorId,
+                    decoration: const InputDecoration(labelText: 'Датчик'),
+                    hint: const Text('Выберите датчик'),
+                    items: allDevices.where((d) => d.type == DeviceType.sensor).map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
+                    onChanged: (value) => setDialogState(() => selectedSensorId = value),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedSensorCondition,
+                    decoration: const InputDecoration(labelText: 'Условие'),
+                    items: const [
+                      DropdownMenuItem(value: 'temperature_above', child: Text('Температура >')),
+                      DropdownMenuItem(value: 'temperature_below', child: Text('Температура <')),
+                      DropdownMenuItem(value: 'humidity_above', child: Text('Влажность >')),
+                      DropdownMenuItem(value: 'humidity_below', child: Text('Влажность <')),
+                    ],
+                    onChanged: (value) => setDialogState(() => selectedSensorCondition = value ?? 'temperature_above'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: sensorThresholdController,
+                    decoration: const InputDecoration(labelText: 'Порог'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 const Text('Действия:', style: TextStyle(fontWeight: FontWeight.bold)), const SizedBox(height: 8),
                 if (devices.isEmpty) const Text('Нет устройств', style: TextStyle(color: Colors.grey))
                 else ...devices.map((device) {
@@ -210,10 +251,29 @@ class ScenesScreen extends ConsumerWidget {
                 if (nameController.text.isNotEmpty && hasActions) {
                   final actions = selectedActions.entries.where((e) => e.value != null).map((e) => SceneAction(deviceId: e.key, command: e.value!)).toList();
                   final timeStr = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+
                   final scene = Scene(
-                    id: existingScene?.id ?? const Uuid().v4(), name: nameController.text, icon: triggerType == 'time' ? '⏰' : '🎬', actions: actions,
-                    trigger: triggerType == 'time' ? SceneTrigger(type: TriggerType.time, time: timeStr, repeat: RepeatType.values.firstWhere((r) => r.name == repeatType), repeatDays: repeatType == 'weekly' ? selectedDays.toList() : null) : null,
+                    id: existingScene?.id ?? const Uuid().v4(),
+                    name: nameController.text,
+                    icon: triggerType == 'time' ? '⏰' : (triggerType == 'sensor' ? '🌡️' : '🎬'),
+                    actions: actions,
+                    trigger: triggerType == 'time'
+                        ? SceneTrigger(
+                      type: TriggerType.time,
+                      time: timeStr,
+                      repeat: RepeatType.values.firstWhere((r) => r.name == repeatType),
+                      repeatDays: repeatType == 'weekly' ? selectedDays.toList() : null,
+                    )
+                        : triggerType == 'sensor'
+                        ? SceneTrigger(
+                      type: TriggerType.deviceState,
+                      sensorDeviceId: selectedSensorId,
+                      sensorCondition: selectedSensorCondition,
+                      sensorThreshold: double.tryParse(sensorThresholdController.text) ?? 30,
+                    )
+                        : null,
                   );
+
                   ref.read(scenesProvider.notifier).addScene(scene);
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEditing ? '✅ Сцена обновлена!' : '✅ Сцена создана!')));
@@ -229,7 +289,6 @@ class ScenesScreen extends ConsumerWidget {
     );
   }
 
-  /// Парсит строку времени HH:mm в TimeOfDay.
   TimeOfDay? _parseTime(String? timeStr) {
     if (timeStr == null) return null;
     final parts = timeStr.split(':');

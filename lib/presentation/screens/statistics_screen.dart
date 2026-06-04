@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../data/local/database.dart';
+//import 'dart:math';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -100,9 +101,114 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
-  /// Вкладка "Датчики" — заглушка.
+  /// Вкладка "Датчики" — графики.
   Widget _buildSensorsTab() {
-    return const Center(child: Text('Данные датчиков — скоро'));
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: AppDatabase.getSensorData(days: 7),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+        final data = snapshot.data!;
+        if (data.isEmpty) return const Center(child: Text('Нет данных датчиков'));
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Text('Температура за 7 дней', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 250,
+                child: LineChart(
+                  LineChartData(
+                    minY: 10,
+                    maxY: 35,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: data
+                            .where((d) => d['temperature'] != null)
+                            .map((d) => FlSpot(
+                          DateTime.parse(d['timestamp'] as String).millisecondsSinceEpoch.toDouble(),
+                          (d['temperature'] as num).toDouble(),
+                        ))
+                            .toList(),
+                        isCurved: true,
+                        color: Colors.red,
+                        barWidth: 2,
+                        dotData: const FlDotData(show: false),
+                      ),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          interval: 86400000, // 1 день в мс
+                          getTitlesWidget: (value, meta) {
+                            final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                            return Text('${date.day}.${date.month}', style: const TextStyle(fontSize: 10));
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 35)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    gridData: const FlGridData(show: true),
+                    borderData: FlBorderData(show: true),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text('Влажность за 7 дней', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 250,
+                child: LineChart(
+                  LineChartData(
+                    minY: 30,
+                    maxY: 90,
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: data
+                            .where((d) => d['humidity'] != null)
+                            .map((d) => FlSpot(
+                          DateTime.parse(d['timestamp'] as String).millisecondsSinceEpoch.toDouble(),
+                          (d['humidity'] as num).toDouble(),
+                        ))
+                            .toList(),
+                        isCurved: true,
+                        color: Colors.blue,
+                        barWidth: 2,
+                        dotData: const FlDotData(show: false),
+                      ),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 30,
+                          interval: 86400000,
+                          getTitlesWidget: (value, meta) {
+                            final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                            return Text('${date.day}.${date.month}', style: const TextStyle(fontSize: 10));
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 35)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    gridData: const FlGridData(show: true),
+                    borderData: FlBorderData(show: true),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// Вкладка "Энергия" — потребление kWh за 7 дней.

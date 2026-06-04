@@ -20,23 +20,59 @@ Device _$DeviceFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$Device {
+  /// Внутренний уникальный идентификатор (UUID)
   String get id => throw _privateConstructorUsedError;
+
+  /// Человекочитаемое название устройства
   String get name => throw _privateConstructorUsedError;
+
+  /// Тип устройства: outlet, switch1/2/3, sensor, curtain, hvac, light, camera, button
   DeviceType get type => throw _privateConstructorUsedError;
+
+  /// ID комнаты, к которой привязано устройство
   String get roomId => throw _privateConstructorUsedError;
+
+  /// Флаг "в сети"
   bool get isOnline => throw _privateConstructorUsedError;
+
+  /// Текущее состояние: online, offline, pending, error
   DeviceState get state => throw _privateConstructorUsedError;
+
+  /// Tuya Device ID (внешний идентификатор устройства в облаке Tuya)
   String? get deviceId => throw _privateConstructorUsedError;
+
+  /// Локальный ключ шифрования для Tuya-протокола
   String? get localKey => throw _privateConstructorUsedError;
+
+  /// IP-адрес устройства в локальной сети
   String? get address => throw _privateConstructorUsedError;
+
+  /// Версия протокола Tuya: 3.1, 3.3, 3.4, 3.5
   double? get version => throw _privateConstructorUsedError;
-  int? get dpsIndex => throw _privateConstructorUsedError; // Для датчиков
+
+  /// Индекс DPS для вкл/выкл (по умолчанию 1, для SimPal-TY130 = 2)
+  int? get dpsIndex => throw _privateConstructorUsedError;
+
+  /// MQTT-топик (для будущей интеграции с Zigbee/MQTT)
   String? get mqttTopic => throw _privateConstructorUsedError;
+
+  /// Последнее значение температуры (для датчиков)
   double? get temperature => throw _privateConstructorUsedError;
+
+  /// Последнее значение влажности (для датчиков)
   double? get humidity => throw _privateConstructorUsedError;
+
+  /// Последнее значение датчика движения
   bool? get motion => throw _privateConstructorUsedError;
+
+  /// Последнее значение датчика открытия двери
   bool? get doorOpen => throw _privateConstructorUsedError;
+
+  /// Уровень заряда батареи (для беспроводных датчиков)
   double? get battery => throw _privateConstructorUsedError;
+
+  /// Гибкие свойства: isOn, states, channels, brightness, position,
+  /// sensorType, sensorDps, sensorDivider, temperature, humidity, power...
   Map<String, dynamic> get properties => throw _privateConstructorUsedError;
 
   /// Serializes this Device to a JSON map.
@@ -349,42 +385,80 @@ class _$DeviceImpl implements _Device {
   factory _$DeviceImpl.fromJson(Map<String, dynamic> json) =>
       _$$DeviceImplFromJson(json);
 
+  /// Внутренний уникальный идентификатор (UUID)
   @override
   final String id;
+
+  /// Человекочитаемое название устройства
   @override
   final String name;
+
+  /// Тип устройства: outlet, switch1/2/3, sensor, curtain, hvac, light, camera, button
   @override
   final DeviceType type;
+
+  /// ID комнаты, к которой привязано устройство
   @override
   final String roomId;
+
+  /// Флаг "в сети"
   @override
   final bool isOnline;
+
+  /// Текущее состояние: online, offline, pending, error
   @override
   final DeviceState state;
+
+  /// Tuya Device ID (внешний идентификатор устройства в облаке Tuya)
   @override
   final String? deviceId;
+
+  /// Локальный ключ шифрования для Tuya-протокола
   @override
   final String? localKey;
+
+  /// IP-адрес устройства в локальной сети
   @override
   final String? address;
+
+  /// Версия протокола Tuya: 3.1, 3.3, 3.4, 3.5
   @override
   final double? version;
+
+  /// Индекс DPS для вкл/выкл (по умолчанию 1, для SimPal-TY130 = 2)
   @override
   final int? dpsIndex;
-// Для датчиков
+
+  /// MQTT-топик (для будущей интеграции с Zigbee/MQTT)
   @override
   final String? mqttTopic;
+
+  /// Последнее значение температуры (для датчиков)
   @override
   final double? temperature;
+
+  /// Последнее значение влажности (для датчиков)
   @override
   final double? humidity;
+
+  /// Последнее значение датчика движения
   @override
   final bool? motion;
+
+  /// Последнее значение датчика открытия двери
   @override
   final bool? doorOpen;
+
+  /// Уровень заряда батареи (для беспроводных датчиков)
   @override
   final double? battery;
+
+  /// Гибкие свойства: isOn, states, channels, brightness, position,
+  /// sensorType, sensorDps, sensorDivider, temperature, humidity, power...
   final Map<String, dynamic> _properties;
+
+  /// Гибкие свойства: isOn, states, channels, brightness, position,
+  /// sensorType, sensorDps, sensorDivider, temperature, humidity, power...
   @override
   @JsonKey()
   Map<String, dynamic> get properties {
@@ -494,40 +568,76 @@ abstract class _Device implements Device {
 
   factory _Device.fromJson(Map<String, dynamic> json) = _$DeviceImpl.fromJson;
 
+  /// Внутренний уникальный идентификатор (UUID)
   @override
   String get id;
+
+  /// Человекочитаемое название устройства
   @override
   String get name;
+
+  /// Тип устройства: outlet, switch1/2/3, sensor, curtain, hvac, light, camera, button
   @override
   DeviceType get type;
+
+  /// ID комнаты, к которой привязано устройство
   @override
   String get roomId;
+
+  /// Флаг "в сети"
   @override
   bool get isOnline;
+
+  /// Текущее состояние: online, offline, pending, error
   @override
   DeviceState get state;
+
+  /// Tuya Device ID (внешний идентификатор устройства в облаке Tuya)
   @override
   String? get deviceId;
+
+  /// Локальный ключ шифрования для Tuya-протокола
   @override
   String? get localKey;
+
+  /// IP-адрес устройства в локальной сети
   @override
   String? get address;
+
+  /// Версия протокола Tuya: 3.1, 3.3, 3.4, 3.5
   @override
   double? get version;
+
+  /// Индекс DPS для вкл/выкл (по умолчанию 1, для SimPal-TY130 = 2)
   @override
-  int? get dpsIndex; // Для датчиков
+  int? get dpsIndex;
+
+  /// MQTT-топик (для будущей интеграции с Zigbee/MQTT)
   @override
   String? get mqttTopic;
+
+  /// Последнее значение температуры (для датчиков)
   @override
   double? get temperature;
+
+  /// Последнее значение влажности (для датчиков)
   @override
   double? get humidity;
+
+  /// Последнее значение датчика движения
   @override
   bool? get motion;
+
+  /// Последнее значение датчика открытия двери
   @override
   bool? get doorOpen;
+
+  /// Уровень заряда батареи (для беспроводных датчиков)
   @override
   double? get battery;
+
+  /// Гибкие свойства: isOn, states, channels, brightness, position,
+  /// sensorType, sensorDps, sensorDivider, temperature, humidity, power...
   @override
   Map<String, dynamic> get properties;
 

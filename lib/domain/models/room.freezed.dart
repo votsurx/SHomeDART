@@ -20,9 +20,16 @@ Room _$RoomFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$Room {
+  /// Уникальный идентификатор комнаты
   String get id => throw _privateConstructorUsedError;
+
+  /// Название комнаты (Гостиная, Спальня...)
   String get name => throw _privateConstructorUsedError;
+
+  /// Emoji-иконка (🛋️, 🛏️, 🍳...)
   String? get icon => throw _privateConstructorUsedError;
+
+  /// Порядок сортировки при отображении (0, 1, 2...)
   int get sortOrder => throw _privateConstructorUsedError;
 
   /// Serializes this Room to a JSON map.
@@ -140,12 +147,19 @@ class _$RoomImpl implements _Room {
   factory _$RoomImpl.fromJson(Map<String, dynamic> json) =>
       _$$RoomImplFromJson(json);
 
+  /// Уникальный идентификатор комнаты
   @override
   final String id;
+
+  /// Название комнаты (Гостиная, Спальня...)
   @override
   final String name;
+
+  /// Emoji-иконка (🛋️, 🛏️, 🍳...)
   @override
   final String? icon;
+
+  /// Порядок сортировки при отображении (0, 1, 2...)
   @override
   @JsonKey()
   final int sortOrder;
@@ -196,12 +210,19 @@ abstract class _Room implements Room {
 
   factory _Room.fromJson(Map<String, dynamic> json) = _$RoomImpl.fromJson;
 
+  /// Уникальный идентификатор комнаты
   @override
   String get id;
+
+  /// Название комнаты (Гостиная, Спальня...)
   @override
   String get name;
+
+  /// Emoji-иконка (🛋️, 🛏️, 🍳...)
   @override
   String? get icon;
+
+  /// Порядок сортировки при отображении (0, 1, 2...)
   @override
   int get sortOrder;
 

@@ -23,7 +23,11 @@ mixin _$Scene {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String get icon => throw _privateConstructorUsedError;
+
+  /// Список действий (какие устройства и что сделать)
   List<SceneAction> get actions => throw _privateConstructorUsedError;
+
+  /// Триггер запуска (time, deviceState, manual). null = ручная сцена.
   SceneTrigger? get trigger => throw _privateConstructorUsedError;
 
   /// Serializes this Scene to a JSON map.
@@ -192,7 +196,11 @@ class _$SceneImpl implements _Scene {
   final String name;
   @override
   final String icon;
+
+  /// Список действий (какие устройства и что сделать)
   final List<SceneAction> _actions;
+
+  /// Список действий (какие устройства и что сделать)
   @override
   List<SceneAction> get actions {
     if (_actions is EqualUnmodifiableListView) return _actions;
@@ -200,6 +208,7 @@ class _$SceneImpl implements _Scene {
     return EqualUnmodifiableListView(_actions);
   }
 
+  /// Триггер запуска (time, deviceState, manual). null = ручная сцена.
   @override
   final SceneTrigger? trigger;
 
@@ -257,8 +266,12 @@ abstract class _Scene implements Scene {
   String get name;
   @override
   String get icon;
+
+  /// Список действий (какие устройства и что сделать)
   @override
   List<SceneAction> get actions;
+
+  /// Триггер запуска (time, deviceState, manual). null = ручная сцена.
   @override
   SceneTrigger? get trigger;
 
@@ -276,9 +289,13 @@ SceneAction _$SceneActionFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$SceneAction {
+  /// ID устройства
   String get deviceId => throw _privateConstructorUsedError;
-  String get command =>
-      throw _privateConstructorUsedError; // 'turnOn', 'turnOff', 'setBrightness'
+
+  /// Команда: 'turnOn', 'turnOff', 'setBrightness'
+  String get command => throw _privateConstructorUsedError;
+
+  /// Значение для команды (яркость 0-255)
   dynamic get value => throw _privateConstructorUsedError;
 
   /// Serializes this SceneAction to a JSON map.
@@ -390,11 +407,15 @@ class _$SceneActionImpl implements _SceneAction {
   factory _$SceneActionImpl.fromJson(Map<String, dynamic> json) =>
       _$$SceneActionImplFromJson(json);
 
+  /// ID устройства
   @override
   final String deviceId;
+
+  /// Команда: 'turnOn', 'turnOff', 'setBrightness'
   @override
   final String command;
-// 'turnOn', 'turnOff', 'setBrightness'
+
+  /// Значение для команды (яркость 0-255)
   @override
   final dynamic value;
 
@@ -444,10 +465,15 @@ abstract class _SceneAction implements SceneAction {
   factory _SceneAction.fromJson(Map<String, dynamic> json) =
       _$SceneActionImpl.fromJson;
 
+  /// ID устройства
   @override
   String get deviceId;
+
+  /// Команда: 'turnOn', 'turnOff', 'setBrightness'
   @override
-  String get command; // 'turnOn', 'turnOff', 'setBrightness'
+  String get command;
+
+  /// Значение для команды (яркость 0-255)
   @override
   dynamic get value;
 
@@ -465,14 +491,31 @@ SceneTrigger _$SceneTriggerFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$SceneTrigger {
+  /// Тип триггера: time (по времени), deviceState (по состоянию), manual (вручную)
   TriggerType get type => throw _privateConstructorUsedError;
-  String? get time =>
-      throw _privateConstructorUsedError; // 'HH:mm' для time триггера
-  String? get deviceId =>
-      throw _privateConstructorUsedError; // для device_state триггера
-  String? get condition => throw _privateConstructorUsedError; // 'on', 'off'
+
+  /// Время срабатывания в формате HH:mm (для time)
+  String? get time => throw _privateConstructorUsedError;
+
+  /// ID устройства-триггера (для deviceState)
+  String? get deviceId => throw _privateConstructorUsedError;
+
+  /// Условие срабатывания: 'on', 'off' (для deviceState)
+  String? get condition => throw _privateConstructorUsedError;
+
+  /// Тип повтора: once (один раз), daily (каждый день), weekly (по дням), interval
   RepeatType get repeat => throw _privateConstructorUsedError;
-  List<int>? get repeatDays => throw _privateConstructorUsedError;
+
+  /// Дни недели для weekly (1=Пн, 7=Вс)
+  List<int>? get repeatDays =>
+      throw _privateConstructorUsedError; // Новые поля для датчиков
+  String? get sensorDeviceId =>
+      throw _privateConstructorUsedError; // ID датчика
+  String? get sensorCondition =>
+      throw _privateConstructorUsedError; // temperature_above, temperature_below, humidity_above, humidity_below
+  double? get sensorThreshold =>
+      throw _privateConstructorUsedError; // Пороговое значение
+  String? get lastExecuted => throw _privateConstructorUsedError;
 
   /// Serializes this SceneTrigger to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -496,7 +539,11 @@ abstract class $SceneTriggerCopyWith<$Res> {
       String? deviceId,
       String? condition,
       RepeatType repeat,
-      List<int>? repeatDays});
+      List<int>? repeatDays,
+      String? sensorDeviceId,
+      String? sensorCondition,
+      double? sensorThreshold,
+      String? lastExecuted});
 }
 
 /// @nodoc
@@ -520,6 +567,10 @@ class _$SceneTriggerCopyWithImpl<$Res, $Val extends SceneTrigger>
     Object? condition = freezed,
     Object? repeat = null,
     Object? repeatDays = freezed,
+    Object? sensorDeviceId = freezed,
+    Object? sensorCondition = freezed,
+    Object? sensorThreshold = freezed,
+    Object? lastExecuted = freezed,
   }) {
     return _then(_value.copyWith(
       type: null == type
@@ -546,6 +597,22 @@ class _$SceneTriggerCopyWithImpl<$Res, $Val extends SceneTrigger>
           ? _value.repeatDays
           : repeatDays // ignore: cast_nullable_to_non_nullable
               as List<int>?,
+      sensorDeviceId: freezed == sensorDeviceId
+          ? _value.sensorDeviceId
+          : sensorDeviceId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sensorCondition: freezed == sensorCondition
+          ? _value.sensorCondition
+          : sensorCondition // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sensorThreshold: freezed == sensorThreshold
+          ? _value.sensorThreshold
+          : sensorThreshold // ignore: cast_nullable_to_non_nullable
+              as double?,
+      lastExecuted: freezed == lastExecuted
+          ? _value.lastExecuted
+          : lastExecuted // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -564,7 +631,11 @@ abstract class _$$SceneTriggerImplCopyWith<$Res>
       String? deviceId,
       String? condition,
       RepeatType repeat,
-      List<int>? repeatDays});
+      List<int>? repeatDays,
+      String? sensorDeviceId,
+      String? sensorCondition,
+      double? sensorThreshold,
+      String? lastExecuted});
 }
 
 /// @nodoc
@@ -586,6 +657,10 @@ class __$$SceneTriggerImplCopyWithImpl<$Res>
     Object? condition = freezed,
     Object? repeat = null,
     Object? repeatDays = freezed,
+    Object? sensorDeviceId = freezed,
+    Object? sensorCondition = freezed,
+    Object? sensorThreshold = freezed,
+    Object? lastExecuted = freezed,
   }) {
     return _then(_$SceneTriggerImpl(
       type: null == type
@@ -612,6 +687,22 @@ class __$$SceneTriggerImplCopyWithImpl<$Res>
           ? _value._repeatDays
           : repeatDays // ignore: cast_nullable_to_non_nullable
               as List<int>?,
+      sensorDeviceId: freezed == sensorDeviceId
+          ? _value.sensorDeviceId
+          : sensorDeviceId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sensorCondition: freezed == sensorCondition
+          ? _value.sensorCondition
+          : sensorCondition // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sensorThreshold: freezed == sensorThreshold
+          ? _value.sensorThreshold
+          : sensorThreshold // ignore: cast_nullable_to_non_nullable
+              as double?,
+      lastExecuted: freezed == lastExecuted
+          ? _value.lastExecuted
+          : lastExecuted // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -625,27 +716,41 @@ class _$SceneTriggerImpl implements _SceneTrigger {
       this.deviceId,
       this.condition,
       this.repeat = RepeatType.once,
-      final List<int>? repeatDays})
+      final List<int>? repeatDays,
+      this.sensorDeviceId,
+      this.sensorCondition,
+      this.sensorThreshold,
+      this.lastExecuted})
       : _repeatDays = repeatDays;
 
   factory _$SceneTriggerImpl.fromJson(Map<String, dynamic> json) =>
       _$$SceneTriggerImplFromJson(json);
 
+  /// Тип триггера: time (по времени), deviceState (по состоянию), manual (вручную)
   @override
   final TriggerType type;
+
+  /// Время срабатывания в формате HH:mm (для time)
   @override
   final String? time;
-// 'HH:mm' для time триггера
+
+  /// ID устройства-триггера (для deviceState)
   @override
   final String? deviceId;
-// для device_state триггера
+
+  /// Условие срабатывания: 'on', 'off' (для deviceState)
   @override
   final String? condition;
-// 'on', 'off'
+
+  /// Тип повтора: once (один раз), daily (каждый день), weekly (по дням), interval
   @override
   @JsonKey()
   final RepeatType repeat;
+
+  /// Дни недели для weekly (1=Пн, 7=Вс)
   final List<int>? _repeatDays;
+
+  /// Дни недели для weekly (1=Пн, 7=Вс)
   @override
   List<int>? get repeatDays {
     final value = _repeatDays;
@@ -655,9 +760,22 @@ class _$SceneTriggerImpl implements _SceneTrigger {
     return EqualUnmodifiableListView(value);
   }
 
+// Новые поля для датчиков
+  @override
+  final String? sensorDeviceId;
+// ID датчика
+  @override
+  final String? sensorCondition;
+// temperature_above, temperature_below, humidity_above, humidity_below
+  @override
+  final double? sensorThreshold;
+// Пороговое значение
+  @override
+  final String? lastExecuted;
+
   @override
   String toString() {
-    return 'SceneTrigger(type: $type, time: $time, deviceId: $deviceId, condition: $condition, repeat: $repeat, repeatDays: $repeatDays)';
+    return 'SceneTrigger(type: $type, time: $time, deviceId: $deviceId, condition: $condition, repeat: $repeat, repeatDays: $repeatDays, sensorDeviceId: $sensorDeviceId, sensorCondition: $sensorCondition, sensorThreshold: $sensorThreshold, lastExecuted: $lastExecuted)';
   }
 
   @override
@@ -673,13 +791,31 @@ class _$SceneTriggerImpl implements _SceneTrigger {
                 other.condition == condition) &&
             (identical(other.repeat, repeat) || other.repeat == repeat) &&
             const DeepCollectionEquality()
-                .equals(other._repeatDays, _repeatDays));
+                .equals(other._repeatDays, _repeatDays) &&
+            (identical(other.sensorDeviceId, sensorDeviceId) ||
+                other.sensorDeviceId == sensorDeviceId) &&
+            (identical(other.sensorCondition, sensorCondition) ||
+                other.sensorCondition == sensorCondition) &&
+            (identical(other.sensorThreshold, sensorThreshold) ||
+                other.sensorThreshold == sensorThreshold) &&
+            (identical(other.lastExecuted, lastExecuted) ||
+                other.lastExecuted == lastExecuted));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, type, time, deviceId, condition,
-      repeat, const DeepCollectionEquality().hash(_repeatDays));
+  int get hashCode => Object.hash(
+      runtimeType,
+      type,
+      time,
+      deviceId,
+      condition,
+      repeat,
+      const DeepCollectionEquality().hash(_repeatDays),
+      sensorDeviceId,
+      sensorCondition,
+      sensorThreshold,
+      lastExecuted);
 
   /// Create a copy of SceneTrigger
   /// with the given fields replaced by the non-null parameter values.
@@ -704,23 +840,47 @@ abstract class _SceneTrigger implements SceneTrigger {
       final String? deviceId,
       final String? condition,
       final RepeatType repeat,
-      final List<int>? repeatDays}) = _$SceneTriggerImpl;
+      final List<int>? repeatDays,
+      final String? sensorDeviceId,
+      final String? sensorCondition,
+      final double? sensorThreshold,
+      final String? lastExecuted}) = _$SceneTriggerImpl;
 
   factory _SceneTrigger.fromJson(Map<String, dynamic> json) =
       _$SceneTriggerImpl.fromJson;
 
+  /// Тип триггера: time (по времени), deviceState (по состоянию), manual (вручную)
   @override
   TriggerType get type;
+
+  /// Время срабатывания в формате HH:mm (для time)
   @override
-  String? get time; // 'HH:mm' для time триггера
+  String? get time;
+
+  /// ID устройства-триггера (для deviceState)
   @override
-  String? get deviceId; // для device_state триггера
+  String? get deviceId;
+
+  /// Условие срабатывания: 'on', 'off' (для deviceState)
   @override
-  String? get condition; // 'on', 'off'
+  String? get condition;
+
+  /// Тип повтора: once (один раз), daily (каждый день), weekly (по дням), interval
   @override
   RepeatType get repeat;
+
+  /// Дни недели для weekly (1=Пн, 7=Вс)
   @override
-  List<int>? get repeatDays;
+  List<int>? get repeatDays; // Новые поля для датчиков
+  @override
+  String? get sensorDeviceId; // ID датчика
+  @override
+  String?
+      get sensorCondition; // temperature_above, temperature_below, humidity_above, humidity_below
+  @override
+  double? get sensorThreshold; // Пороговое значение
+  @override
+  String? get lastExecuted;
 
   /// Create a copy of SceneTrigger
   /// with the given fields replaced by the non-null parameter values.

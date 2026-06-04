@@ -52,6 +52,10 @@ _$SceneTriggerImpl _$$SceneTriggerImplFromJson(Map<String, dynamic> json) =>
       repeatDays: (json['repeatDays'] as List<dynamic>?)
           ?.map((e) => (e as num).toInt())
           .toList(),
+      sensorDeviceId: json['sensorDeviceId'] as String?,
+      sensorCondition: json['sensorCondition'] as String?,
+      sensorThreshold: (json['sensorThreshold'] as num?)?.toDouble(),
+      lastExecuted: json['lastExecuted'] as String?,
     );
 
 Map<String, dynamic> _$$SceneTriggerImplToJson(_$SceneTriggerImpl instance) =>
@@ -62,6 +66,10 @@ Map<String, dynamic> _$$SceneTriggerImplToJson(_$SceneTriggerImpl instance) =>
       'condition': instance.condition,
       'repeat': _$RepeatTypeEnumMap[instance.repeat]!,
       'repeatDays': instance.repeatDays,
+      'sensorDeviceId': instance.sensorDeviceId,
+      'sensorCondition': instance.sensorCondition,
+      'sensorThreshold': instance.sensorThreshold,
+      'lastExecuted': instance.lastExecuted,
     };
 
 const _$TriggerTypeEnumMap = {

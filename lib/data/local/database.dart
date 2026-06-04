@@ -27,7 +27,7 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         // Создание всех таблиц с нуля
         await db.execute('''
@@ -65,6 +65,18 @@ class AppDatabase {
             roomName TEXT,
             timerName TEXT,
             timestamp TEXT NOT NULL
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE sensor_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            deviceId TEXT NOT NULL,
+            deviceName TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            temperature REAL,
+            humidity REAL,
+            power REAL
           )
         ''');
 
@@ -153,6 +165,19 @@ class AppDatabase {
             )
           ''');
         }
+        if (oldVersion < 7) {
+          await db.execute('''
+            CREATE TABLE sensor_log (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              deviceId TEXT NOT NULL,
+              deviceName TEXT NOT NULL,
+              timestamp TEXT NOT NULL,
+              temperature REAL,
+              humidity REAL,
+              power REAL
+            )
+          ''');
+        }
       },
     );
   }
@@ -195,6 +220,48 @@ class AppDatabase {
       });
     }
   }
+  /// Вставляет запись в лог датчиков
+  static Future<void> insertSensorLog({
+    required String deviceId,
+    required String deviceName,
+    required String timestamp,
+    double? temperature,
+    double? humidity,
+    double? power,
+  }) async {
+    final db = await database;
+    await db.insert('sensor_log', {
+      'deviceId': deviceId,
+      'deviceName': deviceName,
+      'timestamp': timestamp,
+      'temperature': temperature,
+      'humidity': humidity,
+      'power': power,
+    });
+  }
+
+  /// Возвращает данные датчиков за последние N дней
+  static Future<List<Map<String, dynamic>>> getSensorData({
+    String? deviceId,
+    int days = 7,
+  }) async {
+    final db = await database;
+    final cutoff = DateTime.now().subtract(Duration(days: days)).toIso8601String();
+
+    String? where;
+    List<dynamic>? whereArgs;
+
+    if (deviceId != null) {
+      where = 'deviceId = ? AND timestamp >= ?';
+      whereArgs = [deviceId, cutoff];
+    } else {
+      where = 'timestamp >= ?';
+      whereArgs = [cutoff];
+    }
+
+    return await db.query('sensor_log', where: where, whereArgs: whereArgs, orderBy: 'timestamp ASC');
+  }
+
   /// Возвращает статистику энергопотребления за последние N дней.
   static Future<List<Map<String, dynamic>>> getEnergyStats({int days = 7}) async {
     final db = await database;
