@@ -4,9 +4,9 @@
 # ============================================================
 
 name: shome
-description: SHome v2.0 - Smart Home Control
+description: SHome v2.11 - Smart Home Control
 publish_to: 'none'          # Приватный проект, не публикуется на pub.dev
-version: 2.0.0+1
+version: 2.11.0+1
 
 # Минимальная версия Dart SDK
 environment:
@@ -52,15 +52,18 @@ dependencies:
   shared_preferences: ^2.2.2   # Хранение настроек (тема, интервал опроса)
 
   # ============ Export/Import ============
-  file_picker: ^8.0.0          # Выбор файла для импорта
-  share_plus: ^10.0.1          # Поделиться файлом для экспорта
-  path_provider: ^2.1.0        # Пути к папкам приложения
+  file_picker: ^8.1.7          # Выбор файла для импорта
+  share_plus: ^10.1.4          # Поделиться файлом для экспорта
+  path_provider: ^2.1.5        # Пути к папкам приложения
 
   # ============ Permissions ============
   permission_handler: ^11.3.0  # Запрос разрешений (запись файлов)
 
   # ============ MQTT (заготовка) ============
   mqtt_client: ^10.0.0         # MQTT клиент для будущей интеграции
+
+  # =============WEBdav=================
+  webdav_client: ^1.2.1
 
 dev_dependencies:
   flutter_test:

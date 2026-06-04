@@ -11,18 +11,139 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _pollInterval = 2;
+  bool _hasBackup = false;
+  DateTime? _lastBackup;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _checkBackupStatus();
   }
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _pollInterval = prefs.getInt('poll_interval') ?? 2;
     });
+  }
+
+  Future<void> _checkBackupStatus() async {
+    final hasBackup = await ConfigService.hasLocalBackup();
+    final lastBackup = await ConfigService.lastBackupDate();
+    if (!mounted) return;
+    setState(() {
+      _hasBackup = hasBackup;
+      _lastBackup = lastBackup;
+    });
+  }
+
+  Future<void> _exportConfig() async {
+    try {
+      await ConfigService.exportConfig();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Конфиг готов к отправке')),
+      );
+      _checkBackupStatus();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Ошибка: $e')),
+      );
+    }
+  }
+
+  Future<void> _importConfig() async {
+    try {
+      await ConfigService.importConfig();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Импорт выполнен!')),
+      );
+      _checkBackupStatus();
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Ошибка: $e')),
+      );
+    }
+  }
+
+  Future<void> _quickImport() async {
+    try {
+      await ConfigService.quickImport();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Восстановлено из бекапа')),
+      );
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ ${e.toString().replaceFirst('Exception: ', '')}')),
+      );
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'никогда';
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} '
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Показывает SimpleDialog с выбором действия над бекапом.
+  void _showBackupDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Резервное копирование'),
+        children: [
+          // Экспорт
+          SimpleDialogOption(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _exportConfig();
+            },
+            child: const ListTile(
+              leading: Icon(Icons.upload, color: Colors.blue),
+              title: Text('Экспортировать'),
+              subtitle: Text('Поделиться через облако, почту, Telegram'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          // Импорт
+          SimpleDialogOption(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _importConfig();
+            },
+            child: const ListTile(
+              leading: Icon(Icons.download, color: Colors.green),
+              title: Text('Импортировать'),
+              subtitle: Text('Выбрать файл на устройстве или в облаке'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          // Восстановить (только если есть локальный бекап)
+          if (_hasBackup)
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _quickImport();
+              },
+              child: ListTile(
+                leading: const Icon(Icons.restore, color: Colors.teal),
+                title: const Text('Восстановить из бекапа'),
+                subtitle: Text('Локальный бекап от ${_formatDate(_lastBackup)}'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -49,28 +170,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     )).toList(),
                   ),
                 );
+                if (!mounted) return;
                 if (selected != null) {
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setInt('poll_interval', selected);
+                  if (!mounted) return;
                   setState(() => _pollInterval = selected);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Интервал изменён на $selected сек. Перезапустите приложение.')),
-                    );
-                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Интервал изменён на $selected сек. Перезапустите приложение.')),
+                  );
                 }
               },
             ),
           ),
           const SizedBox(height: 12),
 
-          // Резервная копия
+          // Резервное копирование
           Card(
             child: ListTile(
               leading: const Icon(Icons.backup, color: Colors.blue),
-              title: const Text('Резервная копия'),
-              subtitle: const Text('Экспорт / Импорт конфигурации'),
-              onTap: () => _showBackupMenu(context),
+              title: const Text('Резервное копирование'),
+              subtitle: Text(_hasBackup
+                  ? 'Последний бекап: ${_formatDate(_lastBackup)}'
+                  : 'Экспорт / Импорт / Восстановить'),
+              onTap: () => _showBackupDialog(context),
             ),
           ),
           const SizedBox(height: 24),
@@ -92,79 +215,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Показывает меню выбора: Экспорт / Импорт из файла / Восстановить из приложения
-  void _showBackupMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Экспорт
-            ListTile(
-              leading: const Icon(Icons.file_upload, color: Colors.blue),
-              title: const Text('Экспортировать'),
-              subtitle: const Text('Сохранить и поделиться'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                try {
-                  await ConfigService.exportConfig();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Экспорт выполнен!')));
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка: $e')));
-                  }
-                }
-              },
-            ),
-            // Импорт из файла
-            ListTile(
-              leading: const Icon(Icons.file_download, color: Colors.green),
-              title: const Text('Импортировать из файла'),
-              subtitle: const Text('Выбрать файл на устройстве'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                try {
-                  await ConfigService.importConfig();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Импорт выполнен!')));
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка: $e')));
-                  }
-                }
-              },
-            ),
-            // Восстановить из приложения
-            ListTile(
-              leading: const Icon(Icons.restore, color: Colors.teal),
-              title: const Text('Восстановить из приложения'),
-              subtitle: const Text('Импорт из сохранённой копии'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                try {
-                  await ConfigService.quickImport();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Импорт выполнен!')));
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('❌ ${e.toString().replaceFirst('Exception: ', '')}')),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
-        ),
       ),
     );
   }

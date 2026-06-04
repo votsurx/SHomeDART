@@ -15,12 +15,18 @@ import '../../presentation/screens/events_screen.dart';
 import '../../presentation/screens/timers_screen.dart';
 import '../../presentation/screens/statistics_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
+import '../../presentation/screens/cloud_settings_screen.dart';
 
 /// Главный роутер. Содержит все маршруты приложения.
 /// initialLocation: '/' — стартовый экран (Dashboard).
 final router = GoRouter(
   initialLocation: '/',
   routes: [
+    // Облако — подключение Mail.ru, синхронизация бекапов
+    GoRoute(
+      path: '/cloud',
+      builder: (context, state) => const CloudSettingsScreen(),
+    ),
     // Настройки — экспорт/импорт конфигурации, интервал опроса
     GoRoute(
       path: '/settings',

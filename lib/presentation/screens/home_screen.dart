@@ -115,6 +115,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _buildTile(icon: Icons.timer, label: 'Таймеры', color: Colors.deepOrange, onTap: () => context.push('/timers')),
                 _buildTile(icon: Icons.notifications, label: 'События', color: Colors.red, onTap: () => context.push('/events')),
                 _buildTile(icon: Icons.videocam, label: 'Видео', color: Colors.red, onTap: () {}),
+                _buildTile(icon: Icons.cloud, label: 'Облако', color: Colors.lightBlue, onTap: () => context.push('/cloud')),  // ← НОВАЯ ПЛИТКА
                 _buildTile(icon: Icons.settings, label: 'Настройки', color: Colors.grey, onTap: () => context.push('/settings')),
               ],
             ),
