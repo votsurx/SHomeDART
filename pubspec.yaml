@@ -1,8 +1,14 @@
+# ============================================================
+# SHome v2.0 — Умный дом на Flutter
+# Управление устройствами Tuya по локальной сети
+# ============================================================
+
 name: shome
 description: SHome v2.0 - Smart Home Control
-publish_to: 'none'
+publish_to: 'none'          # Приватный проект, не публикуется на pub.dev
 version: 2.0.0+1
 
+# Минимальная версия Dart SDK
 environment:
   sdk: '>=3.2.0 <4.0.0'
 
@@ -10,68 +16,72 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # State Management
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  # ============ State Management ============
+  flutter_riverpod: ^2.6.1     # Управление состоянием
+  riverpod_annotation: ^2.6.1  # Аннотации для кодогенерации Riverpod
 
-  # Navigation
-  go_router: ^14.8.1
+  # ============ Navigation ============
+  go_router: ^14.8.1           # Маршрутизация с поддержкой deep links
 
-  # DI
-  get_it: ^8.0.3
+  # ============ Dependency Injection ============
+  get_it: ^8.0.3               # Service Locator для DI
 
-  # Storage
-  sqflite: ^2.4.1
-  flutter_secure_storage: ^9.2.4
+  # ============ Storage ============
+  sqflite: ^2.4.1              # Локальная БД SQLite
+  flutter_secure_storage: ^9.2.4  # Защищённое хранилище ключей
 
-  # Logging
-  talker: ^4.6.3
-  talker_flutter: ^4.6.3
+  # ============ Logging ============
+  talker: ^4.6.3               # Логгер
+  talker_flutter: ^4.6.3       # Интеграция логгера с Flutter
 
-  # Utilities
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.9.0
-  uuid: ^4.5.1
+  # ============ Utilities ============
+  freezed_annotation: ^2.4.4   # Аннотации для иммутабельных моделей
+  json_annotation: ^4.9.0      # Аннотации для JSON-сериализации
+  uuid: ^4.5.1                 # Генерация UUID
+  path: ^1.8.3                 # Работа с путями файлов
 
-  # UI
-  flutter_animate: ^4.5.2
+  # ============ UI ============
+  flutter_animate: ^4.5.2      # Анимации
+
+  # ============ Tuya Protocol ============
   tinytuya:
-    path: lib/packages/tinytuya
-  cryptography: ^2.9.0
+    path: lib/packages/tinytuya  # Локальная копия библиотеки (pub.dev версия битая)
+  cryptography: ^2.9.0         # Шифрование для Tuya протокола
 
-  shared_preferences: ^2.2.2
-  path: ^1.8.3
+  # ============ Settings ============
+  shared_preferences: ^2.2.2   # Хранение настроек (тема, интервал опроса)
+
+  # ============ Export/Import ============
+  file_picker: ^8.0.0          # Выбор файла для импорта
+  share_plus: ^10.0.1          # Поделиться файлом для экспорта
+  path_provider: ^2.1.0        # Пути к папкам приложения
+
+  # ============ Permissions ============
+  permission_handler: ^11.3.0  # Запрос разрешений (запись файлов)
+
+  # ============ MQTT (заготовка) ============
+  mqtt_client: ^10.0.0         # MQTT клиент для будущей интеграции
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # Code Generation
-  build_runner: ^2.4.14
-  freezed: ^2.5.8
-  json_serializable: ^6.9.4
+  # ============ Code Generation ============
+  build_runner: ^2.4.14        # Запуск кодогенераторов
+  freezed: ^2.5.8              # Генерация иммутабельных моделей
+  json_serializable: ^6.9.4    # Генерация JSON-сериализации
 
-  # Testing
-  mockito: ^5.4.5
+  # ============ Testing ============
+  mockito: ^5.4.5              # Моки для тестов
+  sqflite_common_ffi: ^2.3.0   # SQLite для тестов без эмулятора
 
-  # Linting
-  flutter_lints: ^5.0.0
+  # ============ Linting ============
+  flutter_lints: ^5.0.0        # Правила линтинга Flutter
 
-  # MQTT
-  mqtt_client: ^10.0.0
 
-  # Statistics
-  fl_chart: ^0.68.0
 
-  # Export\Import
-  file_picker: ^8.0.0
-  share_plus: ^10.0.1
-  path_provider: ^2.1.0
-
-  # razresheniya
-  permission_handler: ^11.3.0
-
-  # Tests
-  sqflite_common_ffi: ^2.3.0
+  # ============ Statistics ============
+  fl_chart: ^0.68.0            # Графики для статистики
 
 flutter:
   uses-material-design: true

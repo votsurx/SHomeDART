@@ -1,3 +1,8 @@
+/// Экран настроек приложения.
+/// Позволяет изменить интервал опроса устройств (2/5/10/30 сек),
+/// экспортировать/импортировать конфигурацию в JSON-файл,
+/// посмотреть информацию о приложении.
+library;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/services/config_service.dart';
@@ -18,11 +23,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
+  /// Загружает сохранённый интервал опроса из SharedPreferences.
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _pollInterval = prefs.getInt('poll_interval') ?? 2;
-    });
+    setState(() => _pollInterval = prefs.getInt('poll_interval') ?? 2);
   }
 
   @override
@@ -32,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Интервал опроса
+          // --- Интервал опроса ---
           Card(
             child: ListTile(
               leading: const Icon(Icons.timer, color: Colors.orange),
@@ -63,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // Экспорт
+          // --- Экспорт конфигурации ---
           Card(
             child: ListTile(
               leading: const Icon(Icons.file_upload, color: Colors.blue),
@@ -73,22 +77,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 try {
                   await ConfigService.exportConfig();
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ Экспорт выполнен!')),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Экспорт выполнен!')));
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('❌ Ошибка экспорта: $e')),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка экспорта: $e')));
                   }
                 }
               },
             ),
           ),
           const SizedBox(height: 12),
-          // Импорт
+          // --- Импорт конфигурации ---
           Card(
             child: ListTile(
               leading: const Icon(Icons.file_download, color: Colors.green),
@@ -98,22 +98,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 try {
                   await ConfigService.importConfig();
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ Импорт выполнен! Перезапустите приложение.')),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Импорт выполнен! Перезапустите приложение.')));
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('❌ Ошибка импорта: $e')),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Ошибка импорта: $e')));
                   }
                 }
               },
             ),
           ),
           const SizedBox(height: 24),
-          // О приложении
+          // --- О приложении ---
           Card(
             child: ListTile(
               leading: const Icon(Icons.info_outline, color: Colors.grey),

@@ -1,8 +1,15 @@
+/// Маппер между доменной моделью Scene и сущностью SQLite SceneEntity.
+/// Действия (actions) сериализуются в JSON-строку и обратно.
+/// Триггеры преобразуются между enum и строкой.
+library;
 import 'dart:convert';
 import '../../domain/models/scene.dart';
 import '../local/entities/scene_entity.dart';
 
 class SceneMapper {
+  /// Преобразует доменную модель Scene в сущность для сохранения в БД.
+  /// - actions преобразуется в JSON-строку через jsonEncode.
+  /// - TriggerType, RepeatType сохраняются как строки через .name.
   static SceneEntity toEntity(Scene scene) => SceneEntity(
     id: scene.id,
     name: scene.name,
@@ -13,6 +20,10 @@ class SceneMapper {
     triggerRepeat: scene.trigger?.repeat.name,
   );
 
+  /// Преобразует сущность БД в доменную модель Scene.
+  /// - actions десериализуется из JSON-строки в список SceneAction.
+  /// - TriggerType, RepeatType восстанавливаются через enum.values.firstWhere.
+  /// - Если triggerType == null — сцена ручная (trigger = null).
   static Scene toDomain(SceneEntity entity) => Scene(
     id: entity.id,
     name: entity.name,

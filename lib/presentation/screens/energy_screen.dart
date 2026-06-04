@@ -1,3 +1,8 @@
+/// Экран энергомониторинга (заготовка).
+/// Отображает DPS-данные устройств: мощность, напряжение, ток, потребление.
+/// Обновляется каждые 5 секунд.
+/// В будущем будет заменён на графики из energy_log.
+library;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +17,9 @@ class EnergyScreen extends ConsumerStatefulWidget {
 }
 
 class _EnergyScreenState extends ConsumerState<EnergyScreen> {
+  /// Таймер периодического опроса DPS
   Timer? _timer;
+  /// Кэш DPS-данных по устройствам
   Map<String, Map<String, dynamic>> _deviceDps = {};
 
   @override
@@ -27,11 +34,13 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen> {
     super.dispose();
   }
 
+  /// Запускает периодический опрос DPS каждые 5 секунд.
   void _startPolling() {
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _updateDps());
     _updateDps();
   }
 
+  /// Запрашивает DPS для всех устройств.
   Future<void> _updateDps() async {
     final devices = ref.read(devicesProvider);
     for (final device in devices) {
@@ -64,6 +73,7 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen> {
     );
   }
 
+  /// Карточка с энергоданными одного устройства.
   Widget _buildEnergyCard(Device device, Map<String, dynamic>? dps) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -87,6 +97,7 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen> {
     );
   }
 
+  /// Строка с одним показателем.
   Widget _buildDpsRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

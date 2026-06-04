@@ -1,9 +1,16 @@
-// lib/data/mappers/device_mapper.dart
+/// Маппер между доменной моделью Device и сущностью SQLite DeviceEntity.
+/// Преобразует типы DeviceType/DeviceState в строки для БД и обратно.
+/// Свойства (properties) сериализуются в JSON-строку и обратно.
+library;
 import 'dart:convert';
 import '../../domain/models/device.dart';
 import '../local/entities/device_entity.dart';
 
 class DeviceMapper {
+  /// Преобразует сущность БД в доменную модель.
+  /// - DeviceType и DeviceState восстанавливаются из строк через enum.values.firstWhere.
+  /// - properties десериализуется из JSON-строки в Map.
+  /// - isOnline преобразуется из int (0/1) в bool.
   static Device toDomain(DeviceEntity entity) {
     return Device(
       id: entity.id,
@@ -21,6 +28,10 @@ class DeviceMapper {
     );
   }
 
+  /// Преобразует доменную модель в сущность для сохранения в БД.
+  /// - DeviceType и DeviceState преобразуются в строки через .name.
+  /// - properties сериализуется в JSON-строку.
+  /// - isOnline преобразуется из bool в int (1/0).
   static DeviceEntity toEntity(Device device) {
     return DeviceEntity(
       id: device.id,

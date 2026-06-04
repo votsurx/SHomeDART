@@ -1,3 +1,7 @@
+/// Точка входа в приложение.
+/// Инициализирует DI (GetIt), запускает фоновые сервисы (TimerEngine, AutomationEngine).
+/// Создаёт комнаты по умолчанию при первом запуске.
+/// Запускает корневой виджет SHomeApp.
 import 'package:flutter/material.dart';
 import 'di/injection.dart';
 import 'domain/models/room.dart';
@@ -7,15 +11,25 @@ import 'data/services/timer_engine.dart';
 import 'app.dart';
 
 void main() {
+  // Инициализация Flutter
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Регистрация всех зависимостей (GetIt)
   configureDependencies();
-  getIt<TimerEngine>().start();
-  getIt<AutomationEngine>().start();
+
+  // Запуск фоновых сервисов
+  getIt<TimerEngine>().start();           // Движок отложенных команд
+  getIt<AutomationEngine>().start();      // Движок сцен по времени
+
+  // Создание комнат по умолчанию (если БД пустая)
   _addDefaultRooms();
 
+  // Запуск приложения
   runApp(const SHomeApp());
 }
 
+/// Добавляет 4 комнаты по умолчанию при первом запуске.
+/// Если в БД уже есть комнаты — ничего не делает.
 void _addDefaultRooms() async {
   await Future.delayed(const Duration(milliseconds: 100));
 

@@ -1,3 +1,8 @@
+/// Главный экран (Dashboard) с адаптивной сеткой плиток.
+/// Запускает AdaptivePoller для фонового опроса устройств.
+/// Проверяет онбординг при старте.
+/// Позволяет переключать тему.
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +23,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// Адаптивный поллер для опроса устройств
   AdaptivePoller? _poller;
 
   @override
@@ -27,6 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _initPoller();
   }
 
+  /// Инициализирует AdaptivePoller с интервалом из настроек.
   Future<void> _initPoller() async {
     final prefs = await SharedPreferences.getInstance();
     final seconds = prefs.getInt('poll_interval') ?? 2;
@@ -36,17 +43,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     setState(() {
       _poller = AdaptivePoller(
-        getIt<TuyaProtocol>(),
-        getIt<Talker>(),
+        getIt<TuyaProtocol>(),    // Протокол Tuya
+        getIt<Talker>(),          // Логгер
+        // Колбэк при изменении состояния одноканального
             (deviceId, isOn) {
           if (mounted) ref.read(devicesProvider.notifier).updateDeviceState(deviceId, isOn);
         },
+        // Колбэк при изменении онлайн-статуса
             (deviceId, isOnline) {
           if (mounted) ref.read(devicesProvider.notifier).updateOnlineState(deviceId, isOnline);
         },
+        // Колбэк при изменении многоканального
             (deviceId, states) {
           if (mounted) ref.read(devicesProvider.notifier).updateDeviceStates(deviceId, states);
         },
+        // Колбэк для датчиков
         onSensorUpdate: (deviceId, properties) {
           if (mounted) ref.read(devicesProvider.notifier).updateDeviceProperties(deviceId, properties);
         },
@@ -56,6 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
+  /// Проверяет, пройден ли онбординг.
   Future<void> _checkOnboarding() async {
     final isComplete = await OnboardingManager.isOnboardingComplete();
     if (!isComplete && mounted) {
@@ -65,10 +77,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-
+    // Обновляем список устройств в поллере
     final devices = ref.watch(devicesProvider);
     _poller?.updateDevices(devices);
 
+    // Тема
     final themeNotifier = ref.watch(themeProvider.notifier);
     final themeMode = ref.watch(themeProvider);
     final isDark = themeMode == ThemeMode.dark;
@@ -81,6 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          // Адаптивная сетка: 2, 3 или 4 колонки
           final crossAxisCount = width > 600 ? 4 : (width > 400 ? 3 : 2);
 
           return Padding(
@@ -100,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _buildTile(icon: Icons.bar_chart, label: 'Статистика', color: Colors.green, onTap: () => context.push('/statistics')),
                 _buildTile(icon: Icons.timer, label: 'Таймеры', color: Colors.deepOrange, onTap: () => context.push('/timers')),
                 _buildTile(icon: Icons.notifications, label: 'События', color: Colors.red, onTap: () => context.push('/events')),
-                _buildTile(icon: Icons.videocam, label: 'Видео', color: Colors.red, onTap: () {} ),
+                _buildTile(icon: Icons.videocam, label: 'Видео', color: Colors.red, onTap: () {}),
                 _buildTile(icon: Icons.settings, label: 'Настройки', color: Colors.grey, onTap: () => context.push('/settings')),
               ],
             ),
@@ -110,6 +124,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  /// Строит одну плитку Dashboard.
   Widget _buildTile({
     required IconData icon,
     required String label,

@@ -1,3 +1,8 @@
+/// Карточка устройства — основной виджет для отображения устройства в сетке.
+/// Поддерживает все типы устройств: розетки, выключатели, датчики, шторы, HVAC, лампы.
+/// Для каждого типа — свой набор контролов (power-иконка, многоканальные, данные датчиков).
+/// Шестерёнка открывает настройки: редактирование параметров, создание датчика, удаление.
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tinytuya/tinytuya.dart' hide Device;
@@ -29,7 +34,7 @@ class DeviceCard extends ConsumerWidget {
       ),
     );
   }
-
+  /// Заголовок карточки: иконка типа + название + шестерёнка настроек.
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
     return Row(
       children: [
@@ -50,7 +55,7 @@ class DeviceCard extends ConsumerWidget {
       ],
     );
   }
-
+  /// Выбирает тип контролов в зависимости от типа устройства.
   Widget _buildControls(WidgetRef ref) {
     switch (device.type) {
       case DeviceType.outlet:
@@ -68,7 +73,8 @@ class DeviceCard extends ConsumerWidget {
         return _buildPowerButton(ref, device.id, device.properties['isOn'] == true, null);
     }
   }
-
+  /// Кнопка питания для одноканальных устройств.
+  /// Зелёная — включено, серая — выключено, красная — оффлайн.
   Widget _buildPowerButton(WidgetRef ref, String deviceId, bool isOn, String? label) {
     final isOnline = device.state != DeviceState.offline && device.state != DeviceState.offline;
 
@@ -112,7 +118,7 @@ class DeviceCard extends ConsumerWidget {
       ],
     );
   }
-
+  /// Многоканальный выключатель. 3 канала — в два ряда.
   Widget _buildMultiSwitch(WidgetRef ref) {
     final channels = device.properties['channels'] as int? ?? 1;
     final states = List<bool>.from(device.properties['states'] ?? List.filled(channels, false));
@@ -142,7 +148,7 @@ class DeviceCard extends ConsumerWidget {
       ],
     );
   }
-
+  /// Кнопка одного канала многоканального выключателя.
   Widget _buildChannelButton(WidgetRef ref, int channel, bool isOn, bool showLabel) {
     final isOnline = device.state != DeviceState.offline && device.state != DeviceState.offline;
 
@@ -183,7 +189,7 @@ class DeviceCard extends ConsumerWidget {
       ],
     );
   }
-
+  /// Отображение данных датчика: температура, влажность, мощность, ток, напряжение.
   Widget _buildSensorInfo(WidgetRef ref) {
     final temp = device.properties['temperature'];
     final hum = device.properties['humidity'];
@@ -215,7 +221,7 @@ class DeviceCard extends ConsumerWidget {
       ],
     );
   }
-
+  /// Шторы: процент открытия.
   Widget _buildCurtainInfo(WidgetRef ref) {
     final pos = device.properties['position'] as int? ?? 100;
     return Column(
@@ -227,8 +233,13 @@ class DeviceCard extends ConsumerWidget {
       ],
     );
   }
-
+  /// Шестерёнка — настройки устройства.
+  /// Открывает bottom sheet с настройками устройства.
+  /// Позволяет редактировать: название, IP, localKey, версию протокола, комнату, DPS индексы.
+  /// Для многоканальных — поля DPS для каждого канала.
+  /// Для обычных устройств — кнопка "Создать датчик".
   void _showDeviceSettings(BuildContext context, WidgetRef ref) {
+    // Контроллеры для редактирования
     final nameController = TextEditingController(text: device.name);
     final localKeyController = TextEditingController(text: device.localKey ?? '');
     final addressController = TextEditingController(text: device.address ?? '');
@@ -237,6 +248,7 @@ class DeviceCard extends ConsumerWidget {
     String selectedRoomId = device.roomId;
     double selectedVersion = device.version ?? 3.3;
 
+    // Контроллеры DPS для каждого канала многоканального устройства
     final channelCount = device.type == DeviceType.switch3 ? 3 : (device.type == DeviceType.switch2 ? 2 : 1);
     final dpsControllers = List.generate(
       channelCount,
@@ -245,20 +257,23 @@ class DeviceCard extends ConsumerWidget {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
+      isScrollControlled: true,  // Поднимается над клавиатурой
+      builder: (ctx) => StatefulBuilder(  // Позволяет обновлять состояние внутри bottom sheet
         builder: (ctx, setModalState) => Padding(
           padding: EdgeInsets.only(left: 24, right: 24, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // ====== Название устройства ======
                 Text(device.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
 
+                // ====== Название (редактируемое) ======
                 TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Название', prefixIcon: Icon(Icons.edit))),
                 const SizedBox(height: 8),
 
+                // ====== Device ID (только чтение) ======
                 TextField(
                   controller: TextEditingController(text: device.deviceId ?? ''),
                   decoration: const InputDecoration(labelText: 'Device ID', prefixIcon: Icon(Icons.fingerprint)),
@@ -266,14 +281,17 @@ class DeviceCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
+                // ====== IP Адрес ======
                 TextField(controller: addressController, decoration: const InputDecoration(labelText: 'IP Адрес', prefixIcon: Icon(Icons.wifi))),
                 const SizedBox(height: 8),
 
+                // ====== Local Key ======
                 TextField(controller: localKeyController, decoration: const InputDecoration(labelText: 'Local Key', prefixIcon: Icon(Icons.vpn_key))),
                 const SizedBox(height: 8),
 
+                // ====== Версия протокола Tuya ======
                 DropdownButtonFormField<double>(
-                  value: selectedVersion,
+                  initialValue: selectedVersion,
                   decoration: const InputDecoration(labelText: 'Версия протокола', prefixIcon: Icon(Icons.info_outline)),
                   items: const [
                     DropdownMenuItem(value: 3.1, child: Text('3.1')),
@@ -287,8 +305,9 @@ class DeviceCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
+                // ====== Комната ======
                 DropdownButtonFormField<String>(
-                  value: selectedRoomId,
+                  initialValue: selectedRoomId,
                   decoration: const InputDecoration(labelText: 'Комната', prefixIcon: Icon(Icons.meeting_room)),
                   items: rooms.map((room) => DropdownMenuItem(value: room.id, child: Text('${room.icon ?? "🏠"} ${room.name}'))).toList(),
                   onChanged: (value) {
@@ -297,20 +316,18 @@ class DeviceCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
+                // ====== DPS индексы ======
                 if (device.type == DeviceType.switch1 || device.type == DeviceType.switch2 || device.type == DeviceType.switch3) ...[
                   Text('DPS каналов:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700], fontSize: 13)),
                   const SizedBox(height: 4),
-                  ...List.generate(
-                    channelCount,
-                        (i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: TextField(
-                        controller: dpsControllers[i],
-                        decoration: InputDecoration(labelText: 'DPS канала ${i + 1}', prefixIcon: const Icon(Icons.tune)),
-                        keyboardType: TextInputType.number,
-                      ),
+                  ...List.generate(channelCount, (i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TextField(
+                      controller: dpsControllers[i],
+                      decoration: InputDecoration(labelText: 'DPS канала ${i + 1}', prefixIcon: const Icon(Icons.tune)),
+                      keyboardType: TextInputType.number,
                     ),
-                  ),
+                  )),
                 ] else ...[
                   TextField(
                     controller: dpsControllers.first,
@@ -320,6 +337,7 @@ class DeviceCard extends ConsumerWidget {
                 ],
 
                 const SizedBox(height: 16),
+                // ====== Кнопки Сохранить / Удалить ======
                 Row(
                   children: [
                     Expanded(
@@ -367,7 +385,7 @@ class DeviceCard extends ConsumerWidget {
                   ],
                 ),
 
-                // Кнопка "Создать датчик"
+                // ====== Кнопка "Создать датчик" (только для не-датчиков) ======
                 if (device.type != DeviceType.sensor) ...[
                   const SizedBox(height: 8),
                   SizedBox(
@@ -390,8 +408,13 @@ class DeviceCard extends ConsumerWidget {
       ),
     );
   }
-
+  /// Диалог создания датчика из текущего устройства.
+  /// Позволяет выбрать тип датчика (температура, влажность, мощность, ток, напряжение),
+  /// указать название, DPS индекс и делитель.
+  /// Создаёт новое устройство с типом DeviceType.sensor,
+  /// копируя IP, localKey, deviceId от родительского устройства.
   void _showCreateSensorDialog(BuildContext context, WidgetRef ref) {
+    // По умолчанию — датчик температуры
     SensorType selectedSensorType = SensorType.temperature;
     final dpsController = TextEditingController(text: '21');
     final dividerController = TextEditingController(text: '10');
@@ -408,8 +431,10 @@ class DeviceCard extends ConsumerWidget {
               children: [
                 Text('Из устройства: ${device.name}'),
                 const SizedBox(height: 12),
+
+                // ====== Тип датчика ======
                 DropdownButtonFormField<SensorType>(
-                  value: selectedSensorType,
+                  initialValue: selectedSensorType,
                   decoration: const InputDecoration(labelText: 'Тип датчика'),
                   items: const [
                     DropdownMenuItem(value: SensorType.temperature, child: Text('Температура')),
@@ -422,30 +447,31 @@ class DeviceCard extends ConsumerWidget {
                     if (value != null) {
                       setDialogState(() {
                         selectedSensorType = value;
+                        // Автозаполнение DPS и делителя в зависимости от типа
                         switch (value) {
                           case SensorType.temperature:
-                            dpsController.text = '21';
-                            dividerController.text = '10';
+                            dpsController.text = '21';    // DPS 21 — температура
+                            dividerController.text = '10';  // ÷10 для °C
                             nameController.text = '${device.name} t°';
                             break;
                           case SensorType.humidity:
-                            dpsController.text = '22';
+                            dpsController.text = '22';    // DPS 22 — влажность
                             dividerController.text = '10';
                             nameController.text = '${device.name} h%';
                             break;
                           case SensorType.power:
-                            dpsController.text = '23';
-                            dividerController.text = '10';
+                            dpsController.text = '23';    // DPS 23 — мощность
+                            dividerController.text = '10';  // ÷10 для W
                             nameController.text = '${device.name} W';
                             break;
                           case SensorType.current:
-                            dpsController.text = '21';
-                            dividerController.text = '1';
+                            dpsController.text = '21';    // DPS 21 — ток (mA)
+                            dividerController.text = '1';   // без деления
                             nameController.text = '${device.name} mA';
                             break;
                           case SensorType.voltage:
-                            dpsController.text = '22';
-                            dividerController.text = '10';
+                            dpsController.text = '22';    // DPS 22 — напряжение
+                            dividerController.text = '10';  // ÷10 для V
                             nameController.text = '${device.name} V';
                             break;
                           default:
@@ -456,10 +482,13 @@ class DeviceCard extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 8),
+                // ====== Название датчика ======
                 TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Название')),
                 const SizedBox(height: 8),
+                // ====== DPS индекс ======
                 TextField(controller: dpsController, decoration: const InputDecoration(labelText: 'DPS индекс'), keyboardType: TextInputType.number),
                 const SizedBox(height: 8),
+                // ====== Делитель ======
                 TextField(controller: dividerController, decoration: const InputDecoration(labelText: 'Делитель'), keyboardType: TextInputType.number),
               ],
             ),
@@ -468,9 +497,11 @@ class DeviceCard extends ConsumerWidget {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
             ElevatedButton(
               onPressed: () {
+                // Парсим введённые значения
                 final dpsIndex = int.tryParse(dpsController.text) ?? 21;
                 final divider = double.tryParse(dividerController.text) ?? 10;
 
+                // Создаём новое устройство-датчик с теми же сетевыми параметрами
                 final sensor = Device(
                   id: '${device.id}_sensor_${DateTime.now().millisecondsSinceEpoch}',
                   name: nameController.text,
@@ -478,15 +509,15 @@ class DeviceCard extends ConsumerWidget {
                   roomId: device.roomId,
                   isOnline: false,
                   state: DeviceState.offline,
-                  deviceId: device.deviceId,
-                  localKey: device.localKey,
-                  address: device.address,
+                  deviceId: device.deviceId,       // Тот же Tuya ID
+                  localKey: device.localKey,       // Тот же ключ
+                  address: device.address,         // Тот же IP
                   version: device.version,
                   dpsIndex: dpsIndex,
                   properties: {
-                    'sensorDps': dpsIndex,
-                    'sensorDivider': divider,
-                    'sensorType': selectedSensorType.name,
+                    'sensorDps': dpsIndex,          // Какой DPS читать
+                    'sensorDivider': divider,       // На сколько делить
+                    'sensorType': selectedSensorType.name,  // Тип датчика
                   },
                 );
 
@@ -504,25 +535,41 @@ class DeviceCard extends ConsumerWidget {
     );
   }
 
+  /// Ручное обновление данных датчика по кнопке "Обновить".
+  /// Отправляет запрос status() к устройству Tuya,
+  /// читает нужный DPS (температура/влажность/мощность),
+  /// делит на sensorDivider и сохраняет в properties.
+  /// UI автоматически обновится через Riverpod.
   Future<void> _refreshSensorData(WidgetRef ref) async {
     try {
+      // Создаём OutletDevice с параметрами датчика
       final outlet = OutletDevice(
         deviceId: device.deviceId ?? '',
         address: device.address ?? '',
         localKey: device.localKey ?? '',
         version: device.version ?? 3.3,
       );
+
+      // Запрашиваем полный статус (все DPS)
       final result = await outlet.status();
+
+      // Если DPS получены — обрабатываем
       if (result['dps'] != null) {
         final dps = result['dps'] as Map<String, dynamic>;
+
+        // Берем DPS индекс из настроек датчика (по умолчанию 21)
         final sensorDps = device.properties['sensorDps'] ?? device.dpsIndex ?? 21;
+        // Берем делитель (по умолчанию 10)
         final divider = device.properties['sensorDivider'] ?? 10;
+        // Читаем значение DPS (поддерживает int и string ключи)
         final rawValue = dps[sensorDps] ?? dps[sensorDps.toString()];
 
         if (rawValue != null) {
+          // Вычисляем реальное значение
           final value = (rawValue as num).toDouble() / divider;
           final sensorType = device.properties['sensorType'] as String?;
 
+          // Обновляем properties устройства через провайдер
           final updated = device.copyWith(
             properties: {
               ...device.properties,
@@ -535,28 +582,55 @@ class DeviceCard extends ConsumerWidget {
         }
       }
     } catch (e) {
-      // ignore
+      // Ошибки игнорируем — датчик может быть оффлайн
     }
   }
 
+  /// Возвращает иконку Material Icons в зависимости от типа устройства.
+  /// Для датчиков (DeviceType.sensor) иконка зависит от sensorType в properties:
+  ///   temperature → термометр, humidity → капля, power → молния.
+  /// Для остальных типов — стандартные иконки.
   IconData _getIconData() {
     switch (device.type) {
-      case DeviceType.outlet: return Icons.power;
-      case DeviceType.light: return Icons.lightbulb;
+    // ====== Розетка ======
+      case DeviceType.outlet:
+        return Icons.power;
+
+    // ====== Лампа ======
+      case DeviceType.light:
+        return Icons.lightbulb;
+
+    // ====== Выключатели (1, 2, 3 клавиши) ======
       case DeviceType.switch1:
       case DeviceType.switch2:
-      case DeviceType.switch3: return Icons.toggle_on;
+      case DeviceType.switch3:
+        return Icons.toggle_on;
+
+    // ====== Датчик (универсальный тип) ======
       case DeviceType.sensor:
         final sensorType = device.properties['sensorType'] as String?;
         switch (sensorType) {
-          case 'temperature': return Icons.thermostat;
-          case 'humidity': return Icons.water_drop;
-          case 'power': return Icons.bolt;
-          default: return Icons.sensors;
+          case 'temperature':
+            return Icons.thermostat;    // Термометр
+          case 'humidity':
+            return Icons.water_drop;    // Капля
+          case 'power':
+            return Icons.bolt;          // Молния
+          default:
+            return Icons.sensors;       // Общий значок датчика
         }
-      case DeviceType.curtain: return Icons.blinds;
-      case DeviceType.hvac: return Icons.ac_unit;
-      default: return Icons.devices;
+
+    // ====== Шторы ======
+      case DeviceType.curtain:
+        return Icons.blinds;
+
+    // ====== Кондиционер ======
+      case DeviceType.hvac:
+        return Icons.ac_unit;
+
+    // ====== Неизвестный тип ======
+      default:
+        return Icons.devices;
     }
   }
 }

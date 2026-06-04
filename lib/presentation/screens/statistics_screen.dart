@@ -1,3 +1,8 @@
+/// Экран статистики с тремя вкладками.
+/// Устройства — график вкл/выкл за всё время.
+/// Датчики — заглушка (будет показывать графики температуры/влажности).
+/// Энергия — потребление kWh по устройствам за 7 дней из energy_log.
+library;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../data/local/database.dart';
@@ -18,6 +23,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     _tabController = TabController(length: 3, vsync: this);
   }
 
+  /// Собирает статистику вкл/выкл из журнала событий.
   Future<List<Map<String, dynamic>>> _getDeviceStats() async {
     final events = await AppDatabase.getRecentEvents(limit: 1000);
     final stats = <String, Map<String, dynamic>>{};
@@ -58,12 +64,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
+  /// Вкладка "Устройства" — столбчатая диаграмма вкл/выкл.
   Widget _buildDevicesTab() {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _getDeviceStats(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
         final data = snapshot.data!;
         if (data.isEmpty) return const Center(child: Text('Нет данных'));
 
@@ -71,7 +77,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // График
               SizedBox(
                 height: 200,
                 child: BarChart(
@@ -84,7 +89,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
                 ),
               ),
               const SizedBox(height: 16),
-              // Сводка
               ...data.map((d) => ListTile(
                 title: Text(d['name'] as String),
                 subtitle: Text('Вкл/Выкл: ${d['count']} раз(а)'),
@@ -96,20 +100,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
+  /// Вкладка "Датчики" — заглушка.
   Widget _buildSensorsTab() {
     return const Center(child: Text('Данные датчиков — скоро'));
   }
 
+  /// Вкладка "Энергия" — потребление kWh за 7 дней.
   Widget _buildEnergyTab() {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: AppDatabase.getEnergyStats(days: 7),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
         final data = snapshot.data!;
         if (data.isEmpty) return const Center(child: Text('Нет данных энергопотребления'));
 
-        // Суммируем по устройствам
         final deviceTotals = <String, double>{};
         for (final row in data) {
           final name = row['deviceName'] as String;

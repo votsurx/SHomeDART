@@ -1,3 +1,8 @@
+/// Экран журнала событий.
+/// Показывает историю всех действий: вкл/выкл, сцены, ошибки, онлайн/оффлайн.
+/// Каждый тип события имеет свой цвет и иконку.
+/// Кнопки: обновить, очистить всё.
+library;
 import 'package:flutter/material.dart';
 import '../../data/local/database.dart';
 
@@ -18,6 +23,7 @@ class _EventsScreenState extends State<EventsScreen> {
     _loadEvents();
   }
 
+  /// Загружает последние 200 событий из БД.
   Future<void> _loadEvents() async {
     final events = await AppDatabase.getRecentEvents(limit: 200);
     setState(() {
@@ -26,6 +32,7 @@ class _EventsScreenState extends State<EventsScreen> {
     });
   }
 
+  /// Иконка для типа события.
   IconData _eventIcon(String event) {
     switch (event) {
       case 'turnOn': return Icons.power_settings_new;
@@ -38,6 +45,7 @@ class _EventsScreenState extends State<EventsScreen> {
     }
   }
 
+  /// Цвет для типа события.
   Color _eventColor(String event) {
     switch (event) {
       case 'turnOn': return Colors.green;
@@ -50,6 +58,7 @@ class _EventsScreenState extends State<EventsScreen> {
     }
   }
 
+  /// Человекочитаемая метка события.
   String _eventLabel(String event) {
     switch (event) {
       case 'turnOn': return 'Включено';
@@ -68,10 +77,7 @@ class _EventsScreenState extends State<EventsScreen> {
       appBar: AppBar(
         title: const Text('События'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadEvents,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadEvents),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
@@ -95,20 +101,13 @@ class _EventsScreenState extends State<EventsScreen> {
 
           return Card(
             child: ListTile(
-              leading: Icon(
-                _eventIcon(event.event),
-                color: _eventColor(event.event),
-              ),
+              leading: Icon(_eventIcon(event.event), color: _eventColor(event.event)),
               title: Text(
-                event.sceneName != null
-                    ? '${event.sceneName}'
-                    : event.deviceName,
+                event.sceneName != null ? '${event.sceneName}' : event.deviceName,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               subtitle: Text(
-                event.sceneName != null
-                    ? 'Сцена выполнена'
-                    : _eventLabel(event.event),
+                event.sceneName != null ? 'Сцена выполнена' : _eventLabel(event.event),
                 style: TextStyle(color: _eventColor(event.event), fontSize: 12),
               ),
               trailing: Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),

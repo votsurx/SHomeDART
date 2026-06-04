@@ -1,3 +1,6 @@
+/// Экран настройки комнат при первом запуске (онбординг).
+/// Позволяет создать комнаты, удалить их.
+/// Кнопка "Готово!" завершает онбординг и переходит на Dashboard.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,16 +22,11 @@ class RoomsSetupScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Создайте комнаты',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            const Text('Создайте комнаты', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text(
-              'Организуйте устройства по комнатам',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+            Text('Организуйте устройства по комнатам', style: TextStyle(color: Colors.grey[600])),
             const SizedBox(height: 24),
+            // Список комнат или заглушка
             Expanded(
               child: rooms.isEmpty
                   ? Center(
@@ -43,21 +41,20 @@ class RoomsSetupScreen extends ConsumerWidget {
               )
                   : ListView.builder(
                 itemCount: rooms.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    child: ListTile(
-                      leading: Text(rooms[index].icon ?? '🏠', style: const TextStyle(fontSize: 32)),
-                      title: Text(rooms[index].name),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => ref.read(roomsProvider.notifier).deleteRoom(rooms[index].id),
-                      ),
+                itemBuilder: (context, index) => Card(
+                  child: ListTile(
+                    leading: Text(rooms[index].icon ?? '🏠', style: const TextStyle(fontSize: 32)),
+                    title: Text(rooms[index].name),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => ref.read(roomsProvider.notifier).deleteRoom(rooms[index].id),
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 16),
+            // Кнопка добавления комнаты
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -68,6 +65,7 @@ class RoomsSetupScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
+            // Кнопка завершения онбординга
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -87,6 +85,7 @@ class RoomsSetupScreen extends ConsumerWidget {
     );
   }
 
+  /// Диалог добавления новой комнаты.
   void _showAddRoomDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
 

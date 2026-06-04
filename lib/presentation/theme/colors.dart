@@ -1,3 +1,9 @@
+/// Цвета приложения Material 3.
+/// primary — основной цвет (фиолетовый).
+/// secondary — вторичный цвет.
+/// surface — цвет поверхностей.
+/// error — цвет ошибок.
+library;
 import 'package:flutter/material.dart';
 
 class AppColors {

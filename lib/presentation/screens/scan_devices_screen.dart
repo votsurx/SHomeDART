@@ -1,3 +1,9 @@
+/// Экран сканирования Tuya-устройств в локальной сети.
+/// Использует PortScanner для асинхронной проверки всех IP в подсети.
+/// Поддерживает два режима:
+/// - isOnboarding=true: кнопка "Продолжить" для перехода к настройке комнат
+/// - isOnboarding=false: кнопка "Назад" для возврата на Dashboard
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -9,6 +15,7 @@ import '../../di/injection.dart';
 import '../../data/services/port_scanner.dart';
 
 class ScanDevicesScreen extends ConsumerStatefulWidget {
+  /// Если true — экран используется в онбординге (кнопка "Продолжить" вместо стрелки "Назад")
   final bool isOnboarding;
 
   const ScanDevicesScreen({super.key, this.isOnboarding = false});
@@ -32,12 +39,10 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Поиск устройств'),
+        // В онбординге нет стрелки назад
         leading: widget.isOnboarding
             ? null
-            : IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+            : IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
       ),
       body: Column(
         children: [
@@ -51,6 +56,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                   Text('Сканируем порты 6666-6668-7000 в локальной сети', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
                   const SizedBox(height: 24),
 
+                  // Прогресс-бар при сканировании
                   if (_scanning) ...[
                     LinearProgressIndicator(value: _total > 0 ? _progress / _total : 0),
                     const SizedBox(height: 8),
@@ -58,6 +64,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                     const SizedBox(height: 16),
                   ],
 
+                  // Список найденных устройств
                   if (_foundDevices.isNotEmpty) ...[
                     Text('Найдено: ${_foundDevices.length}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 12),
@@ -65,6 +72,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                       final isAlreadyAdded = existingDevices.any((d) => d.address == device.ip);
                       final isJustAdded = _addedIps.contains(device.ip);
 
+                      // Уже добавленное устройство
                       if (isAlreadyAdded || isJustAdded) {
                         return Card(
                           color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -76,16 +84,14 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                         );
                       }
 
+                      // Новое устройство — можно добавить
                       return Card(
                         elevation: 3,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
                           leading: Container(
                             width: 44, height: 44,
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                            decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                             child: const Icon(Icons.devices, color: Colors.blue, size: 24),
                           ),
                           title: Text(device.ip, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color)),
@@ -93,10 +99,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                           trailing: IconButton(
                             icon: Container(
                               width: 36, height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
+                              decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), shape: BoxShape.circle),
                               child: const Icon(Icons.add, color: Colors.blue, size: 20),
                             ),
                             onPressed: () => _showAddDialog(device),
@@ -106,6 +109,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                     }),
                   ],
 
+                  // Ничего не найдено
                   if (!_scanning && _foundDevices.isEmpty)
                     Center(
                       child: Column(
@@ -135,7 +139,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
             ),
           ),
 
-          // Кнопка Продолжить (только для онбординга)
+          // Кнопка "Продолжить" только для онбординга
           if (widget.isOnboarding)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -153,6 +157,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
     );
   }
 
+  /// Диалог добавления найденного устройства.
   void _showAddDialog(DiscoveredDevice device) {
     final nameController = TextEditingController(text: 'Устройство ${device.ip}');
     final localKeyController = TextEditingController();
@@ -170,10 +175,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -184,37 +186,26 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Название'),
-                ),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Название')),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<DeviceType>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   decoration: const InputDecoration(labelText: 'Тип устройства', prefixIcon: Icon(Icons.category)),
                   items: const [
                     DropdownMenuItem(value: DeviceType.outlet, child: Text('Розетка')),
                     DropdownMenuItem(value: DeviceType.switch1, child: Text('Выключатель (1 кл.)')),
                     DropdownMenuItem(value: DeviceType.switch2, child: Text('Выключатель (2 кл.)')),
                     DropdownMenuItem(value: DeviceType.switch3, child: Text('Выключатель (3 кл.)')),
-                    DropdownMenuItem(value: DeviceType.sensor, child: Text('Датчик температуры')),
+                    DropdownMenuItem(value: DeviceType.sensor, child: Text('Датчик')),
                     DropdownMenuItem(value: DeviceType.light, child: Text('Лампа')),
                     DropdownMenuItem(value: DeviceType.curtain, child: Text('Шторы')),
                   ],
-                  onChanged: (value) {
-                    setDialogState(() => _selectedType = value ?? DeviceType.outlet);
-                  },
+                  onChanged: (value) => setDialogState(() => _selectedType = value ?? DeviceType.outlet),
                 ),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: deviceIdController,
-                  decoration: const InputDecoration(labelText: 'Device ID', hintText: 'bf...'),
-                ),
+                TextField(controller: deviceIdController, decoration: const InputDecoration(labelText: 'Device ID', hintText: 'bf...')),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: localKeyController,
-                  decoration: const InputDecoration(labelText: 'Local Key', hintText: 'Введите localKey'),
-                ),
+                TextField(controller: localKeyController, decoration: const InputDecoration(labelText: 'Local Key', hintText: 'Введите localKey')),
               ],
             ),
           ),
@@ -236,13 +227,10 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
                     version: 3.5,
                     properties: {'isOn': false},
                   );
-
                   ref.read(devicesProvider.notifier).addDevice(newDevice);
                   setState(() => _addedIps.add(device.ip));
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${nameController.text} добавлено!')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${nameController.text} добавлено!')));
                 }
               },
               child: const Text('Добавить'),
@@ -253,6 +241,7 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
     );
   }
 
+  /// Запускает сканирование локальной подсети.
   Future<void> _startScan() async {
     setState(() {
       _scanning = true;
@@ -265,34 +254,19 @@ class _ScanDevicesScreenState extends ConsumerState<ScanDevicesScreen> {
     if (subnet == null) {
       setState(() => _scanning = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось определить локальную сеть')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Не удалось определить локальную сеть')));
       }
       return;
     }
 
     final scanner = PortScanner(
       getIt<Talker>(),
-          (device) {
-        if (mounted) {
-          setState(() => _foundDevices.add(device));
-        }
-      },
-          (progress, total) {
-        if (mounted) {
-          setState(() {
-            _progress = progress;
-            _total = total;
-          });
-        }
-      },
+          (device) { if (mounted) setState(() => _foundDevices.add(device)); },
+          (progress, total) { if (mounted) setState(() { _progress = progress; _total = total; }); },
     );
 
     await scanner.scanSubnet(subnet);
 
-    if (mounted) {
-      setState(() => _scanning = false);
-    }
+    if (mounted) setState(() => _scanning = false);
   }
 }

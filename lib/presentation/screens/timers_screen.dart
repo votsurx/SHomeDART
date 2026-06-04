@@ -1,3 +1,7 @@
+/// Экран таймеров — отложенное включение/выключение устройств.
+/// Позволяет создать таймер: выбрать устройство, действие (ВКЛ/ВЫКЛ) и время.
+/// Таймеры выполняются через TimerEngine (проверка каждые 10 секунд).
+library;
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/models/device.dart';
@@ -22,11 +26,13 @@ class _TimersScreenState extends ConsumerState<TimersScreen> {
     _loadTimers();
   }
 
+  /// Загружает активные таймеры из БД.
   Future<void> _loadTimers() async {
     final timers = await AppDatabase.getActiveTimers();
     setState(() => _timers = timers);
   }
 
+  /// Форматирует время в HH:mm.
   String _formatTime(DateTime dt) {
     return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
@@ -56,10 +62,7 @@ class _TimersScreenState extends ConsumerState<TimersScreen> {
               subtitle: Text('${timer.command == 'turnOn' ? "Включить" : "Выключить"} в ${_formatTime(timer.executeAt)}'),
               trailing: IconButton(
                 icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () async {
-                  await AppDatabase.deleteTimer(timer.id);
-                  _loadTimers();
-                },
+                onPressed: () async { await AppDatabase.deleteTimer(timer.id); _loadTimers(); },
               ),
             ),
           );
@@ -72,6 +75,7 @@ class _TimersScreenState extends ConsumerState<TimersScreen> {
     );
   }
 
+  /// Диалог создания нового таймера.
   void _showAddTimerDialog(BuildContext context, List<Device> devices) {
     Device? selectedDevice;
     String command = 'turnOff';
@@ -120,12 +124,8 @@ class _TimersScreenState extends ConsumerState<TimersScreen> {
                   final now = DateTime.now();
                   final executeAt = DateTime(now.year, now.month, now.day, selectedTime.hour, selectedTime.minute);
                   final timer = DeviceTimer(
-                    id: const Uuid().v4(),
-                    deviceId: selectedDevice!.id,
-                    deviceName: selectedDevice!.name,
-                    command: command,
-                    executeAt: executeAt.isBefore(now) ? executeAt.add(const Duration(days: 1)) : executeAt,
-                    executed: false,
+                    id: const Uuid().v4(), deviceId: selectedDevice!.id, deviceName: selectedDevice!.name,
+                    command: command, executeAt: executeAt.isBefore(now) ? executeAt.add(const Duration(days: 1)) : executeAt, executed: false,
                   );
                   AppDatabase.insertTimer(timer);
                   _loadTimers();

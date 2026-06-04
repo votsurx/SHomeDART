@@ -1,3 +1,8 @@
+/// Контейнер внедрения зависимостей (Dependency Injection) на базе GetIt.
+/// Регистрирует все сервисы, репозитории и протоколы как синглтоны.
+/// Порядок регистрации важен: сначала базовые зависимости, потом те что от них зависят.
+///
+/// Используется везде через getIt<T>() — в провайдерах, сервисах, экранах.
 import 'package:get_it/get_it.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import '../domain/events/device_event_bus.dart';
@@ -14,42 +19,57 @@ import '../data/repositories/scene_repository_impl.dart';
 import '../data/services/automation_engine.dart';
 import '../data/services/timer_engine.dart';
 
+/// Глобальный экземпляр GetIt для доступа ко всем зависимостям.
 final getIt = GetIt.instance;
 
+/// Регистрирует все зависимости приложения.
+/// Вызывается один раз в main.dart перед запуском.
 void configureDependencies() {
-  // Timers
+  // ============ Таймеры ============
+  /// Движок отложенных команд (вкл/выкл по расписанию).
+  /// Зависит от: DeviceRepository, Talker.
   getIt.registerLazySingleton<TimerEngine>(
         () => TimerEngine(getIt<DeviceRepository>(), getIt<Talker>()),
   );
 
-  //Automatization
+  // ============ Автоматизация ============
+  /// Движок выполнения сцен по времени.
+  /// Зависит от: SceneRepository, Talker.
   getIt.registerLazySingleton<AutomationEngine>(
         () => AutomationEngine(getIt<SceneRepository>(), getIt<Talker>()),
   );
 
-  // Logger
+  // ============ Логгер ============
+  /// TalkerFlutter — логирование в консоль и файл.
   final talker = TalkerFlutter.init();
   getIt.registerLazySingleton<Talker>(() => talker);
 
-  // В configureDependencies:
+  // ============ Репозиторий сцен ============
+  /// Зависит от: DeviceRepository (для выполнения команд).
   getIt.registerLazySingleton<SceneRepository>(
         () => SceneRepositoryImpl(getIt<DeviceRepository>()),
   );
 
-  // Синглтоны
+  // ============ Синглтоны ============
+  /// Шина событий (DeviceOnline, DeviceOffline, DeviceStateChanged).
   getIt.registerLazySingleton<DeviceEventBus>(() => DeviceEventBus());
+  /// Защищённое хранилище ключей (flutter_secure_storage).
   getIt.registerLazySingleton<EncryptedKeys>(() => EncryptedKeys());
 
-  // Protocols
+  // ============ Протоколы ============
+  /// Протокол Tuya — обёртка над tinytuya для управления устройствами.
   getIt.registerLazySingleton<TuyaProtocol>(() => TuyaProtocol(getIt<Talker>()));
 
-  // Services
+  // ============ Сервисы ============
+  /// MQTT клиент (заготовка, не используется активно).
   getIt.registerLazySingleton<MqttService>(() => MqttServiceImpl(getIt<Talker>()));
 
-  // Repositories
+  // ============ Репозитории ============
+  /// Репозиторий устройств: кэш + БД + TuyaProtocol.
   getIt.registerLazySingleton<DeviceRepository>(
         () => DeviceRepositoryImpl(getIt<TuyaProtocol>()),
   );
+  /// Репозиторий комнат: кэш + БД.
   getIt.registerLazySingleton<RoomRepository>(
         () => RoomRepositoryImpl(),
   );

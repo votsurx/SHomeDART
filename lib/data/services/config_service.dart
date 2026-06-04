@@ -1,6 +1,11 @@
+/// Сервис экспорта/импорта конфигурации.
+/// Экспорт: собирает все данные из БД в JSON, сохраняет в Downloads, шарит через Share.
+/// Импорт: читает JSON через FilePicker, восстанавливает все таблицы БД.
+/// Требует разрешения на запись (Permission.storage).
+library;
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+//import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../local/database.dart';
@@ -11,13 +16,14 @@ import '../../domain/models/device_timer.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ConfigService {
-  /// Экспорт конфигурации в JSON и шаринг
+  /// Экспортирует конфигурацию в JSON-файл и открывает системный диалог "Поделиться".
+  /// Запрашивает разрешение на запись файлов.
+  /// Сохраняет файл в папку Downloads как shome_backup.json.
   static Future<void> exportConfig() async {
-    // Запрашиваем разрешение на запись
     if (await Permission.storage.request().isGranted) {
       final config = await _buildConfigJson();
 
-      // Сохраняем в папку Downloads
+      // Сохраняем в общедоступную папку Downloads
       final dir = Directory('/storage/emulated/0/Download');
       if (!await dir.exists()) {
         await dir.create(recursive: true);
@@ -26,7 +32,7 @@ class ConfigService {
       final file = File('${dir.path}/shome_backup.json');
       await file.writeAsString(config);
 
-      // Шарим файл
+      // Открываем системный диалог "Поделиться"
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Резервная копия SHome',
@@ -36,11 +42,11 @@ class ConfigService {
     }
   }
 
-  /// Импорт конфигурации из JSON файла
+  /// Импортирует конфигурацию из выбранного пользователем JSON-файла.
+  /// Открывает FilePicker для выбора файла.
+  /// Восстанавливает комнаты, устройства, сцены и таймеры.
   static Future<void> importConfig() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.any,
-    );
+    final result = await FilePicker.platform.pickFiles(type: FileType.any);
 
     if (result != null && result.files.single.path != null) {
       final file = File(result.files.single.path!);
@@ -49,7 +55,8 @@ class ConfigService {
     }
   }
 
-  /// Собираем JSON из всех данных БД
+  /// Собирает все данные из БД и формирует JSON-строку с отступами.
+  /// Включает: устройства, комнаты, сцены, активные таймеры.
   static Future<String> _buildConfigJson() async {
     final devices = await AppDatabase.getAllDevices();
     final rooms = await AppDatabase.getAllRooms();
@@ -75,32 +82,30 @@ class ConfigService {
     return const JsonEncoder.withIndent('  ').convert(config);
   }
 
-  /// Восстанавливаем данные из JSON
+  /// Восстанавливает все данные из JSON-строки.
+  /// Последовательно вставляет комнаты, устройства, сцены, таймеры.
   static Future<void> _restoreFromJson(String jsonString) async {
     final config = jsonDecode(jsonString) as Map<String, dynamic>;
 
-    // Восстанавливаем комнаты
+    // Порядок важен: сначала комнаты, потом устройства (ссылаются на комнаты)
     if (config['rooms'] != null) {
       for (final room in config['rooms']) {
         await AppDatabase.insertRoom(RoomEntity.fromMap(room));
       }
     }
 
-    // Восстанавливаем устройства
     if (config['devices'] != null) {
       for (final device in config['devices']) {
         await AppDatabase.insertDevice(DeviceEntity.fromMap(device));
       }
     }
 
-    // Восстанавливаем сцены
     if (config['scenes'] != null) {
       for (final scene in config['scenes']) {
         await AppDatabase.insertScene(SceneEntity.fromMap(scene));
       }
     }
 
-    // Восстанавливаем таймеры
     if (config['timers'] != null) {
       for (final timer in config['timers']) {
         await AppDatabase.insertTimer(DeviceTimer(

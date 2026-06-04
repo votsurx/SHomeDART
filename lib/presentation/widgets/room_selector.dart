@@ -1,10 +1,17 @@
+/// Горизонтальный селектор комнат с чипсами.
+/// Используется в DeviceListScreen для фильтрации устройств по комнатам.
+/// Первый чип "Все" показывает все устройства.
+/// Кнопка "+" позволяет быстро добавить новую комнату.
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/room.dart';
 import '../../application/state/rooms_provider.dart';
 
 class RoomSelector extends ConsumerWidget {
+  /// ID выбранной комнаты (для подсветки чипса)
   final String? selectedRoomId;
+  /// Колбэк при выборе комнаты
   final Function(Room) onRoomSelected;
 
   const RoomSelector({
@@ -22,16 +29,11 @@ class RoomSelector extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _buildRoomChip(
-            context,
-            Room(id: 'all', name: 'Все', icon: '🏠'),
-            selectedRoomId == 'all',
-          ),
-          ...rooms.map((room) => _buildRoomChip(
-            context,
-            room,
-            selectedRoomId == room.id,
-          )),
+          // Чип "Все" — показывает все устройства
+          _buildRoomChip(context, Room(id: 'all', name: 'Все', icon: '🏠'), selectedRoomId == 'all'),
+          // Чипсы для каждой комнаты из БД
+          ...rooms.map((room) => _buildRoomChip(context, room, selectedRoomId == room.id)),
+          // Кнопка быстрого добавления комнаты
           IconButton(
             onPressed: () => _showAddRoomDialog(context, ref),
             icon: const Icon(Icons.add_circle_outline),
@@ -42,6 +44,8 @@ class RoomSelector extends ConsumerWidget {
     );
   }
 
+  /// Строит один чип комнаты.
+  /// isSelected — подсвечивает выбранную комнату цветом primaryContainer.
   Widget _buildRoomChip(BuildContext context, Room room, bool isSelected) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -54,6 +58,7 @@ class RoomSelector extends ConsumerWidget {
     );
   }
 
+  /// Диалог быстрого добавления комнаты (без перехода на экран комнат).
   void _showAddRoomDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
 
@@ -63,16 +68,10 @@ class RoomSelector extends ConsumerWidget {
         title: const Text('Добавить комнату'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Название комнаты',
-            hintText: 'Гостиная',
-          ),
+          decoration: const InputDecoration(labelText: 'Название комнаты', hintText: 'Гостиная'),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
           ElevatedButton(
             onPressed: () {
               if (controller.text.isNotEmpty) {

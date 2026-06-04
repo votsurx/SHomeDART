@@ -1,3 +1,7 @@
+/// Роутер приложения на GoRouter.
+/// Определяет все маршруты и связывает их с соответствующими экранами.
+/// Поддерживает онбординг с отдельным сканером (isOnboarding=true).
+library;
 import 'package:go_router/go_router.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/device_list_screen.dart';
@@ -12,62 +16,72 @@ import '../../presentation/screens/timers_screen.dart';
 import '../../presentation/screens/statistics_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
 
+/// Главный роутер. Содержит все маршруты приложения.
+/// initialLocation: '/' — стартовый экран (Dashboard).
 final router = GoRouter(
   initialLocation: '/',
   routes: [
+    // Настройки — экспорт/импорт конфигурации, интервал опроса
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
     ),
-
+    // Статистика — графики вкл/выкл, энергопотребление
     GoRoute(
         path: '/statistics',
         builder: (context, state) => const StatisticsScreen()
     ),
-
+    // Таймеры — отложенное вкл/выкл устройств
     GoRoute(
       path: '/timers',
       builder: (context, state) => const TimersScreen(),
     ),
-
+    // Журнал событий — история всех действий
     GoRoute(
         path: '/events',
         builder: (context, state) => const EventsScreen()
     ),
-
+    // Управление комнатами — добавить, переименовать, удалить
     GoRoute(
       path: '/rooms',
       builder: (context, state) => const RoomsManageScreen(),
     ),
-    // Для Dashboard
+    // Сканер устройств — для вызова из Dashboard (стрелка "Назад")
     GoRoute(
         path: '/scan',
         builder: (context, state) => const ScanDevicesScreen()
     ),
+    // Сцены — создание/редактирование, ручной и timed запуск
     GoRoute(
       path: '/scenes',
       builder: (context, state) => const ScenesScreen(),
     ),
+    // Энергомониторинг — потребление kWh по устройствам
     GoRoute(
       path: '/energy',
       builder: (context, state) => const EnergyScreen(),
     ),
+    // Главный экран — Dashboard с плитками
     GoRoute(
       path: '/',
       builder: (context, state) => const HomeScreen(),
     ),
+    // Список устройств — сетка карточек, фильтр по комнатам
     GoRoute(
       path: '/devices',
       builder: (context, state) => const DeviceListScreen(),
     ),
+    // Онбординг — Welcome экран для новых пользователей
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const WelcomeScreen(),
       routes: [
+        // Сканер при онбординге — с кнопкой "Продолжить" вместо "Назад"
         GoRoute(
             path: '/scan',
             builder: (context, state) => const ScanDevicesScreen(isOnboarding: true)
         ),
+        // Настройка комнат при первом запуске
         GoRoute(
           path: 'rooms',
           builder: (context, state) => const RoomsSetupScreen(),

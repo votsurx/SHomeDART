@@ -1,3 +1,8 @@
+/// Экран управления комнатами.
+/// Позволяет добавлять, переименовывать и удалять комнаты.
+/// При удалении комнаты с устройствами — они переносятся в "all".
+/// Показывает количество устройств в каждой комнате.
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -32,14 +37,8 @@ class RoomsManageScreen extends ConsumerWidget {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () => _showRenameDialog(context, ref, room),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _showDeleteDialog(context, ref, room, deviceCount),
-                  ),
+                  IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showRenameDialog(context, ref, room)),
+                  IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _showDeleteDialog(context, ref, room, deviceCount)),
                 ],
               ),
             ),
@@ -53,28 +52,20 @@ class RoomsManageScreen extends ConsumerWidget {
     );
   }
 
+  /// Диалог добавления новой комнаты.
   void _showAddRoomDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Добавить комнату'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Название', hintText: 'Гостиная'),
-          autofocus: true,
-        ),
+        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Название', hintText: 'Гостиная'), autofocus: true),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
           ElevatedButton(
             onPressed: () {
               if (controller.text.isNotEmpty) {
-                ref.read(roomsProvider.notifier).addRoom(Room(
-                  id: const Uuid().v4(),
-                  name: controller.text,
-                  sortOrder: ref.read(roomsProvider).length,
-                ));
+                ref.read(roomsProvider.notifier).addRoom(Room(id: const Uuid().v4(), name: controller.text, sortOrder: ref.read(roomsProvider).length));
                 Navigator.pop(ctx);
               }
             },
@@ -85,18 +76,14 @@ class RoomsManageScreen extends ConsumerWidget {
     );
   }
 
+  /// Диалог переименования комнаты.
   void _showRenameDialog(BuildContext context, WidgetRef ref, Room room) {
     final controller = TextEditingController(text: room.name);
-
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Переименовать'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Название'),
-          autofocus: true,
-        ),
+        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Название'), autofocus: true),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
           ElevatedButton(
@@ -113,6 +100,7 @@ class RoomsManageScreen extends ConsumerWidget {
     );
   }
 
+  /// Диалог удаления комнаты с предупреждением о переносе устройств.
   void _showDeleteDialog(BuildContext context, WidgetRef ref, Room room, int deviceCount) {
     showDialog(
       context: context,
@@ -127,9 +115,7 @@ class RoomsManageScreen extends ConsumerWidget {
             onPressed: () {
               ref.read(roomsProvider.notifier).deleteRoomAndMoveDevices(room.id);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Комната «${room.name}» удалена')),
-              );
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Комната «${room.name}» удалена')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text('Удалить'),

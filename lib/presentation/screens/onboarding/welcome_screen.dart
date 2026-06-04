@@ -1,3 +1,6 @@
+/// Приветственный экран онбординга.
+/// Показывается при первом запуске приложения.
+/// Кнопка "Начать" ведёт на сканер устройств.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,12 +17,14 @@ class WelcomeScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
+              // Иконка дома
               Icon(
                 Icons.home_rounded,
                 size: 120,
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 32),
+              // Название приложения
               Text(
                 'SHome',
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
@@ -28,6 +33,7 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              // Подзаголовок
               Text(
                 'Управляйте своим умным домом легко и просто',
                 textAlign: TextAlign.center,
@@ -36,6 +42,7 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              // Кнопка "Начать" — переход к сканеру устройств
               SizedBox(
                 width: double.infinity,
                 height: 56,
