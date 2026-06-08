@@ -20,6 +20,7 @@ class MailruCloudService {
       _webdavUrl,
       user: login,
       password: password,
+      debug: false,
     );
   }
 

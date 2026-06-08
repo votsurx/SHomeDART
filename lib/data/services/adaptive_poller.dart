@@ -35,6 +35,8 @@ class AdaptivePoller {
   final Duration _normalInterval;
   /// Состояния опроса для каждого устройства
   final Map<String, _DevicePollState> _states = {};
+  /// какая то хрень!
+  final Map<String, Completer<void>> _pollCompleters = {};
   /// Таймер для периодического опроса
   Timer? _timer;
   /// Список устройств для опроса
@@ -49,6 +51,16 @@ class AdaptivePoller {
         this.onSensorUpdate,
         Duration normalInterval = const Duration(seconds: 2),
       }) : _normalInterval = normalInterval;
+
+  /// Опрашивает устройство немедленно и возвращает Future,
+  /// который завершится когда опрос закончится.
+  /// Полезно для тестов и ручных команд из UI.
+  Future<void> pollOnce(String deviceId) {
+    final completer = Completer<void>();
+    _pollCompleters[deviceId] = completer;
+    forceReset(deviceId);
+    return completer.future;
+  }
 
   /// Запускает периодический опрос. Первый опрос — немедленно.
   void start() {
@@ -66,7 +78,9 @@ class AdaptivePoller {
   /// Принудительный сброс интервала опроса (после ручной команды).
   void forceReset(String deviceId) {
     final state = _states[deviceId];
-    if (state != null) state.reset();
+    if (state != null) {
+      state.reset();
+    }
   }
 
   /// Проверяет, нужно ли опросить устройство, и запускает опрос.
@@ -180,6 +194,7 @@ class AdaptivePoller {
       _onOnlineChanged(device.id, false);
     } finally {
       state.polling = false;
+      _pollCompleters.remove(device.id)?.complete(); // ← добавить
     }
   }
 
@@ -284,5 +299,6 @@ class _DevicePollState {
     errorCount = 0;
     interval = _normalInterval;
     nextPollAt = DateTime.now();
+    polling = false;
   }
 }
