@@ -5,8 +5,6 @@ import 'package:shome/data/services/config_service.dart';
 import 'package:shome/data/local/database.dart';
 import 'package:shome/data/local/entities/device_entity.dart';
 import 'package:shome/data/local/entities/room_entity.dart';
-import 'package:shome/data/local/entities/scene_entity.dart';
-import 'package:shome/domain/models/device_timer.dart';
 
 void main() {
   group('ConfigService', () {

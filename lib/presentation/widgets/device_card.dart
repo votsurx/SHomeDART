@@ -17,20 +17,33 @@ class DeviceCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isOnline = device.state != DeviceState.offline && device.state != DeviceState.offline;
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildHeader(context, ref),
-            Expanded(
-              child: Center(child: _buildControls(ref)),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildHeader(context, ref),
+                Expanded(
+                  child: Center(child: _buildControls(ref)),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          // Индикатор оффлайн в левом нижнем углу
+          if (!isOnline)
+            Positioned(
+              left: 8,
+              bottom: 8,
+              child: Icon(Icons.wifi_off, size: 16, color: Colors.red.withValues(alpha: 0.6)),
+            ),
+        ],
       ),
     );
   }
@@ -85,7 +98,7 @@ class DeviceCard extends ConsumerWidget {
           onTap: () {
             if (!isOnline) {
               ScaffoldMessenger.of(ref.context).showSnackBar(
-                const SnackBar(content: Text('Устройство не в сети'), duration: Duration(seconds: 1)),
+                const SnackBar(content: Text('Устройство offline'), duration: Duration(seconds: 1)),
               );
               return;
             }
@@ -100,14 +113,12 @@ class DeviceCard extends ConsumerWidget {
             height: 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isOnline
-                  ? (isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1))
-                  : Colors.red.withValues(alpha: 0.1),
+              color: isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1),
             ),
             child: Icon(
-              isOnline ? Icons.power_settings_new : Icons.wifi_off,
+              Icons.power_settings_new,
               size: 28,
-              color: isOnline ? (isOn ? Colors.green : Colors.grey) : Colors.red,
+              color: isOn ? Colors.green : Colors.grey,
             ),
           ),
         ),
@@ -159,7 +170,7 @@ class DeviceCard extends ConsumerWidget {
           onTap: () {
             if (!isOnline) {
               ScaffoldMessenger.of(ref.context).showSnackBar(
-                const SnackBar(content: Text('Устройство не в сети'), duration: Duration(seconds: 1)),
+                const SnackBar(content: Text('Устройство offline'), duration: Duration(seconds: 1)),
               );
               return;
             }
@@ -170,14 +181,12 @@ class DeviceCard extends ConsumerWidget {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isOnline
-                  ? (isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1))
-                  : Colors.red.withValues(alpha: 0.1),
+              color: isOn ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.1),
             ),
             child: Icon(
-              isOnline ? Icons.power_settings_new : Icons.wifi_off,
+              Icons.power_settings_new,
               size: 24,
-              color: isOnline ? (isOn ? Colors.green : Colors.grey) : Colors.red,
+              color: isOn ? Colors.green : Colors.grey,
             ),
           ),
         ),
@@ -243,7 +252,6 @@ class DeviceCard extends ConsumerWidget {
     final nameController = TextEditingController(text: device.name);
     final localKeyController = TextEditingController(text: device.localKey ?? '');
     final addressController = TextEditingController(text: device.address ?? '');
-    final dpsController = TextEditingController(text: device.dpsIndex?.toString() ?? '1');
     final rooms = ref.watch(roomsProvider);
     String selectedRoomId = device.roomId;
     double selectedVersion = device.version ?? 3.3;

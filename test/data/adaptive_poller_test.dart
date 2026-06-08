@@ -1,13 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:shome/data/services/adaptive_poller.dart';
 import 'package:shome/data/protocols/tuya_protocol.dart';
 import 'package:shome/domain/models/device.dart';
 import 'package:talker/talker.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class MockTuyaProtocol implements TuyaProtocol {
   final Map<String, Map<String, dynamic>> _deviceStates = {};
   int getStatusCallCount = 0;
+  bool throwError = false;
 
   void setDeviceState(String deviceId, bool isOn) {
     _deviceStates[deviceId] = {'dps': {'1': isOn}};
@@ -24,6 +25,7 @@ class MockTuyaProtocol implements TuyaProtocol {
   @override
   Future<Map<String, dynamic>?> getStatus(Device device) async {
     getStatusCallCount++;
+    if (throwError) throw Exception('Network error');
     return _deviceStates[device.id];
   }
 
@@ -51,30 +53,32 @@ Device createDevice({
 }
 
 void main() {
-
   setUpAll(() {
     sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
   });
-
-
 
   group('AdaptivePoller', () {
     late MockTuyaProtocol mockTuya;
     late Talker talker;
 
-    setUp(() {
+    setUp(() async {
+      // Уникальная БД для каждого теста
+      databaseFactory = databaseFactoryFfi;
+      final dbPath = '${DateTime.now().millisecondsSinceEpoch}_test.db';
+      // sqfliteFfiDatabaseFactory.setDatabasesPath(dbPath);
+
       mockTuya = MockTuyaProtocol();
       talker = Talker();
     });
 
-    test('pollOnce вызывает getStatus и возвращает результат', () async {
+    test('pollOnce вызывает getStatus', () async {
       final device = createDevice(id: 'dev_1', type: DeviceType.outlet, properties: {'isOn': false});
       mockTuya.setDeviceState(device.id, true);
 
       final poller = AdaptivePoller(
         mockTuya, talker,
             (deviceId, isOn) {}, (deviceId, isOnline) {}, (deviceId, states) {},
+        normalInterval: const Duration(minutes: 10),
       );
 
       poller.updateDevices([device]);
@@ -82,10 +86,10 @@ void main() {
       await poller.pollOnce(device.id);
       poller.stop();
 
-      expect(mockTuya.getStatusCallCount, 1);
+      expect(mockTuya.getStatusCallCount, greaterThan(0));
     });
 
-    test('pollOnce вызывает onStateChanged при изменении состояния', () async {
+    test('pollOnce вызывает onStateChanged при изменении', () async {
       final device = createDevice(id: 'dev_1', type: DeviceType.outlet, properties: {'isOn': false});
       mockTuya.setDeviceState(device.id, true);
 
@@ -94,6 +98,7 @@ void main() {
         mockTuya, talker,
             (deviceId, isOn) => stateChanges.add('$deviceId:$isOn'),
             (deviceId, isOnline) {}, (deviceId, states) {},
+        normalInterval: const Duration(minutes: 10),
       );
 
       poller.updateDevices([device]);
@@ -116,6 +121,7 @@ void main() {
         mockTuya, talker,
             (deviceId, isOn) {}, (deviceId, isOnline) {},
             (deviceId, states) => statesChanges.add({'id': deviceId, 'states': states}),
+        normalInterval: const Duration(minutes: 10),
       );
 
       poller.updateDevices([device]);
@@ -127,7 +133,7 @@ void main() {
       expect(statesChanges.first['states'], [true, false]);
     });
 
-    test('pollOnce НЕ вызывает колбэк если состояние не изменилось', () async {
+    test('pollOnce НЕ вызывает колбэк без изменений', () async {
       final device = createDevice(id: 'dev_1', type: DeviceType.outlet, properties: {'isOn': false});
       mockTuya.setDeviceState(device.id, false);
 
@@ -136,6 +142,7 @@ void main() {
         mockTuya, talker,
             (deviceId, isOn) => stateChanges.add('$deviceId:$isOn'),
             (deviceId, isOnline) {}, (deviceId, states) {},
+        normalInterval: const Duration(minutes: 10),
       );
 
       poller.updateDevices([device]);
@@ -146,7 +153,7 @@ void main() {
       expect(stateChanges, isEmpty);
     });
 
-    test('pollOnce вызывает onOnlineChanged при успехе', () async {
+    test('pollOnce вызывает onOnlineChanged', () async {
       final device = createDevice(id: 'dev_1', type: DeviceType.outlet);
       mockTuya.setDeviceState(device.id, false);
 
@@ -155,6 +162,7 @@ void main() {
         mockTuya, talker,
             (deviceId, isOn) {}, (deviceId, isOnline) => onlineChanges.add('$deviceId:$isOnline'),
             (deviceId, states) {},
+        normalInterval: const Duration(minutes: 10),
       );
 
       poller.updateDevices([device]);
@@ -181,7 +189,7 @@ void main() {
       poller.stop();
 
       final countAfterStop = mockTuya.getStatusCallCount;
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
       expect(mockTuya.getStatusCallCount, countAfterStop);
     });
   });

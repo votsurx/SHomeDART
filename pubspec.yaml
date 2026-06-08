@@ -65,6 +65,9 @@ dependencies:
   # =============WEBdav=================
   webdav_client: ^1.2.1
 
+  # ==========Pogoda=============
+  http: ^1.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

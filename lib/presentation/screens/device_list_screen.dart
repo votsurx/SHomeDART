@@ -1,15 +1,22 @@
-/// Экран списка устройств в виде адаптивной сетки.
+/// Главный экран со списком устройств в виде адаптивной сетки.
 /// Поддерживает фильтрацию по комнатам через RoomSelector.
-/// Кнопка "+" открывает диалог добавления нового устройства вручную.
-/// При создании устройства подставляет default properties в зависимости от типа.
+/// AppBar: название слева, время + погода по центру, шестерёнка справа.
 library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../domain/models/device.dart';
 import '../../application/state/devices_provider.dart';
 import '../widgets/device_card.dart';
 import '../widgets/room_selector.dart';
-
+import '../../data/services/adaptive_poller.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:talker/talker.dart';
+import '../../di/injection.dart';
+import '../../data/protocols/tuya_protocol.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 class DeviceListScreen extends ConsumerStatefulWidget {
   const DeviceListScreen({super.key});
 
@@ -18,36 +25,78 @@ class DeviceListScreen extends ConsumerStatefulWidget {
 }
 
 class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
-  /// Выбранная комната для фильтрации
   String _selectedRoomId = 'all';
-  /// Тип устройства по умолчанию при добавлении
   DeviceType _selectedType = DeviceType.outlet;
+  AdaptivePoller? _poller;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPoller(); // ← добавить
+  }
+
+  Future<void> _initPoller() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seconds = prefs.getInt('poll_interval') ?? 2;
+    final interval = Duration(seconds: seconds);
+
+    if (!mounted) return;
+
+    setState(() {
+      _poller = AdaptivePoller(
+        getIt<TuyaProtocol>(),
+        getIt<Talker>(),
+            (deviceId, isOn) {
+          if (mounted) ref.read(devicesProvider.notifier).updateDeviceState(deviceId, isOn);
+        },
+            (deviceId, isOnline) {
+          if (mounted) ref.read(devicesProvider.notifier).updateOnlineState(deviceId, isOnline);
+        },
+            (deviceId, states) {
+          if (mounted) ref.read(devicesProvider.notifier).updateDeviceStates(deviceId, states);
+        },
+        onSensorUpdate: (deviceId, properties) {
+          if (mounted) ref.read(devicesProvider.notifier).updateDeviceProperties(deviceId, properties);
+        },
+        normalInterval: interval,
+      );
+      _poller!.start();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final allDevices = ref.watch(devicesProvider);
+    _poller?.updateDevices(allDevices); // ← обновляем список устройств
 
-    // Фильтруем устройства по выбранной комнате
     final devices = _selectedRoomId == 'all'
         ? allDevices
         : allDevices.where((d) => d.roomId == _selectedRoomId).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Мои устройства'),
+        // Слева — название приложения
+        title: const Text('SHome'),
+        centerTitle: false,
+        // По центру — время + погода
         actions: [
-          IconButton(icon: const Icon(Icons.add), onPressed: () => _showAddDeviceDialog()),
+          // Виджет времени и погоды по центру (через Expanded в title или тут)
+          const _TimeWeatherWidget(),
+          const SizedBox(width: 8),
+          // Шестерёнка — меню
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => context.push('/menu'),
+          ),
         ],
       ),
       body: Column(
         children: [
-          // Селектор комнат (горизонтальные чипсы)
           RoomSelector(
             selectedRoomId: _selectedRoomId,
             onRoomSelected: (room) => setState(() => _selectedRoomId = room.id),
           ),
           const Divider(),
-          // Сетка устройств или заглушка
           Expanded(
             child: devices.isEmpty
                 ? const Center(
@@ -63,7 +112,6 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
                 : LayoutBuilder(
               builder: (context, constraints) {
                 final width = constraints.maxWidth;
-                // Адаптивная сетка: планшет 3 колонки, телефон 2
                 final crossAxisCount = width > 600 ? 3 : 2;
 
                 return GridView.builder(
@@ -89,8 +137,6 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
     );
   }
 
-  /// Диалог ручного добавления устройства.
-  /// Позволяет ввести название, тип, Device ID, IP, Local Key.
   void _showAddDeviceDialog() {
     final nameController = TextEditingController();
     final deviceIdController = TextEditingController();
@@ -109,7 +155,7 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
                 TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Название')),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<DeviceType>(
-                  value: _selectedType,
+                  initialValue: _selectedType,
                   decoration: const InputDecoration(labelText: 'Тип устройства', prefixIcon: Icon(Icons.category)),
                   items: const [
                     DropdownMenuItem(value: DeviceType.outlet, child: Text('Розетка')),
@@ -162,7 +208,6 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
     );
   }
 
-  /// Возвращает default properties для каждого типа устройства.
   Map<String, dynamic> _getDefaultProperties(DeviceType type) {
     switch (type) {
       case DeviceType.switch1: return {'channels': 1, 'states': [false]};
@@ -173,5 +218,106 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
       case DeviceType.light: return {'brightness': 255, 'isOn': false};
       default: return {'isOn': false};
     }
+  }
+}
+
+/// Виджет времени и погоды для AppBar.
+/// Обновляет время каждую минуту, погоду — каждые 30 минут.
+class _TimeWeatherWidget extends StatefulWidget {
+  const _TimeWeatherWidget();
+
+  @override
+  State<_TimeWeatherWidget> createState() => _TimeWeatherWidgetState();
+}
+
+class _TimeWeatherWidgetState extends State<_TimeWeatherWidget> {
+  late DateTime _now;
+  String _temperature = '--°';
+  String _weatherIcon = '☀️';
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _updateTime();
+    _fetchWeather();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _updateTime() {
+    if (!mounted) return;
+    setState(() => _now = DateTime.now());
+    _timer = Timer(const Duration(minutes: 1), _updateTime);
+  }
+
+  Future<void> _fetchWeather() async {
+    try {
+      final lat = 54.53; // ← Калуга. Замени на свой город!
+      final lon = 36.27;
+
+      final url = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code',
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final temp = data['current']['temperature_2m'];
+        final code = data['current']['weather_code'];
+
+        if (!mounted) return;
+        setState(() {
+          _temperature = '${temp.round()}°';
+          _weatherIcon = _weatherCodeToEmoji(code);
+        });
+      }
+    } catch (e) {
+      // Оставляем заглушку при ошибке
+      debugPrint('Weather fetch error: $e');
+    }
+
+    // Обновляем погоду каждые 30 минут
+    if (mounted) {
+      Future.delayed(const Duration(minutes: 30), _fetchWeather);
+    }
+  }
+
+  String _weatherCodeToEmoji(int code) {
+    if (code == 0) return '☀️';       // Clear sky
+    if (code <= 3) return '🌤️';      // Partly cloudy
+    if (code <= 48) return '☁️';      // Cloudy / Fog
+    if (code <= 57) return '🌧️';      // Drizzle
+    if (code <= 67) return '🌧️';      // Rain
+    if (code <= 77) return '❄️';      // Snow
+    if (code <= 82) return '🌧️';      // Rain showers
+    if (code <= 86) return '❄️';      // Snow showers
+    if (code >= 95) return '⛈️';      // Thunderstorm
+    return '🌡️';                      // Unknown
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timeStr =
+        '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(timeStr,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        const SizedBox(width: 8),
+        Text(_weatherIcon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 4),
+        Text(_temperature,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+      ],
+    );
   }
 }
