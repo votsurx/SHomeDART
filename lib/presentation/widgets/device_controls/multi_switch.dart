@@ -10,7 +10,10 @@ class DeviceMultiSwitch extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final channels = device.properties['channels'] as int? ?? 1;
+    final channels = device.properties['channels'] as int?
+        ?? (device.type == DeviceType.switch3 ? 3
+            : device.type == DeviceType.switch2 ? 2
+            : 1);
     final states = List<bool>.from(device.properties['states'] ?? List.filled(channels, false));
     final isThreeChannel = channels == 3;
 

@@ -27,7 +27,7 @@ class _ScannerTabState extends ConsumerState<ScannerTab> {
       final parts = ip.split('.');
       final subnet = '${parts[0]}.${parts[1]}.${parts[2]}';
 
-      final cameras = await CameraScanner.scanRtsp(subnet: subnet, timeout: 1);
+      final cameras = await CameraScanner.scanRtsp(subnet: subnet, timeout: 3);
       setState(() { _foundCameras = cameras; _status = 'Найдено: ${cameras.length} RTSP камер'; });
     } catch (e) {
       setState(() => _status = 'Ошибка: $e');

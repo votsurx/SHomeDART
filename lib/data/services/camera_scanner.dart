@@ -27,7 +27,7 @@ class CameraScanner {
   static Future<List<DiscoveredCamera>> scanRtsp({
     required String subnet, // "192.168.1"
     int port = 554,
-    int timeout = 1,
+    int timeout = 3,
   }) async {
     final cameras = <DiscoveredCamera>[];
     final futures = <Future>[];
