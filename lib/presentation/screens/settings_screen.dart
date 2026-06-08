@@ -203,12 +203,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListTile(
               leading: const Icon(Icons.info_outline, color: Colors.grey),
               title: const Text('О приложении'),
-              subtitle: const Text('SHome v2.11'),
+              subtitle: const Text('SHome v2.13'),
               onTap: () {
                 showAboutDialog(
                   context: context,
                   applicationName: 'SHome',
-                  applicationVersion: '2.11.0',
+                  applicationVersion: '2.13.0',
                   applicationLegalese: '© 2026 SHome Team',
                 );
               },

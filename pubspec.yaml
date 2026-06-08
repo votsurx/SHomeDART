@@ -6,7 +6,7 @@
 name: shome
 description: SHome v2.11 - Smart Home Control
 publish_to: 'none'          # Приватный проект, не публикуется на pub.dev
-version: 2.11.0+1
+version: 2.13.0+1
 
 # Минимальная версия Dart SDK
 environment:
