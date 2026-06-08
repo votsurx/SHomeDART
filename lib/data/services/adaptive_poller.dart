@@ -117,7 +117,10 @@ class AdaptivePoller {
         final dps = result['dps'] as Map<String, dynamic>;
 
         // --- Многоканальные устройства ---
-        final channels = device.properties['channels'] as int?;
+        final channels = device.properties['channels'] as int?
+            ?? (device.type == DeviceType.switch3 ? 3
+                : device.type == DeviceType.switch2 ? 2
+                : null);
         if (channels != null && channels > 1) {
           final currentStates = List<bool>.from(device.properties['states'] ?? List.filled(channels, false));
           var changed = false;
@@ -138,6 +141,7 @@ class AdaptivePoller {
               properties: {...device.properties, 'states': currentStates, 'isOn': currentStates.any((s) => s)},
             );
             _updateDeviceInList(updatedDevice);
+            _talker.info('Multi-channel state changed: $currentStates');
             _onStatesChanged(device.id, currentStates);
           }
         } else {
