@@ -1,17 +1,72 @@
-# shome
+# 🏠 SHome v2.15 — Умный дом на Flutter
 
-SmartHome проект
+[![Version](https://img.shields.io/badge/version-2.15.0-blue)](https://github.com/votsurx/SHomeDART/releases)
+[![Tests](https://img.shields.io/badge/tests-48%20passed-brightgreen)](https://github.com/votsurx/SHomeDART/actions)
+[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-lightgrey)]()
 
-## Getting Started
+Локальный контроллер умного дома для устройств Tuya с видео-подсистемой и облачной синхронизацией.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 📱 Главный экран
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- **Устройства на главном** — сразу видно, что включено/выключено
+- **Адаптивная сетка** — 2-5 колонок в зависимости от ориентации
+- **Drag & Drop** — перестановка виджетов с сохранением порядка
+- **Индикаторы онлайн/оффлайн** — зелёный/серый wifi значок
+- **Погода и время** в AppBar (Open-Meteo API)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 📹 Видеонаблюдение
+
+### Локальная камера
+- Живое превью камеры планшета в сетке устройств
+- Переключение фронтальная/тыловая
+- Полноэкранный просмотр по тапу
+
+### RTSP камеры
+- Добавление/редактирование/удаление через вкладку «RTSP»
+- Живое превью в карточке через VLC плеер
+- Полноэкранный просмотр
+
+### Сканер камер
+- Поиск RTSP камер в локальной сети (сканирование портов)
+- Поиск ONVIF камер (WS-Discovery)
+- Добавление найденных камер в один клик
+
+### Тревоги (Frigate)
+- MQTT интеграция с Frigate NVR
+- Автоподключение к брокеру
+- Экран «Тревоги» с историей событий
+
+---
+
+## ☁️ Облако Mail.ru
+
+- WebDAV подключение к облаку Mail.ru
+- Автосинхронизация бекапов при сворачивании
+- Ручная загрузка/скачивание бекапов
+- Ротация: хранение последних 5 копий
+- Плитка «Облако» на главном экране
+
+---
+
+## 💾 Резервное копирование
+
+- Локальный автобекап (3 последние копии)
+- Экспорт через Share Sheet (почта, Telegram, облако)
+- Импорт через File Picker
+- Восстановление из локального бекапа
+
+---
+
+## 🧪 Тестирование
+
+- **48 тестов**: unit + widget + интеграционные
+- ConfigService, MailruCloudService, AdaptivePoller
+- PortScanner, CameraScanner, DeviceSettings
+- SettingsScreen, CloudSettingsScreen
+
+```bash
+flutter test --concurrency=1
