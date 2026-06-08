@@ -4,7 +4,9 @@
 /// Логирует все действия через EventLogger.
 /// При старте все устройства переводятся в offline — AdaptivePoller актуализирует состояние.
 library;
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/device.dart';
 import '../../domain/repositories/device_repository.dart';
 import '../../data/protocols/tuya_protocol.dart';
@@ -17,72 +19,22 @@ final devicesProvider = StateNotifierProvider<DevicesNotifier, List<Device>>((re
   return DevicesNotifier();
 });
 
-/// Управляет списком устройств: загрузка, добавление, удаление, вкл/выкл.
+/// Управляет списком устройств: загрузка, добавление, удаление, вкл/выкл, перестановка.
 /// Поддерживает многоканальные устройства и датчики.
 class DevicesNotifier extends StateNotifier<List<Device>> {
-  /// Репозиторий для сохранения в БД
   final DeviceRepository _repository = getIt<DeviceRepository>();
-  /// Протокол Tuya для отправки команд напрямую (без CommandHandler)
   final TuyaProtocol _tuyaProtocol = getIt<TuyaProtocol>();
 
-  /// Колбэк для сброса AdaptivePoller при ручной команде.
-  /// Устанавливается из HomeScreen при создании поллера.
   void Function(String)? onCommandSent;
 
-  /// Загружает устройства из БД при создании.
-  /// При старте все устройства помечаются offline для показа wifi_off иконок.
   DevicesNotifier() : super([]) {
     _loadDevices();
   }
 
-  /// Геттер для получения списка устройств из других провайдеров (RoomsNotifier)
   List<Device> get devices => state;
 
-  /// Локально обновляет устройство в state (без сохранения в БД).
-  /// Используется AdaptivePoller для обновления после опроса.
-  void updateDeviceLocal(Device device) {
-    state = state.map((d) => d.id == device.id ? device : d).toList();
-  }
+  // ═══════════ ЗАГРУЗКА И ПОРЯДОК ═══════════
 
-  /// Обновляет isOn для одноканального устройства.
-  /// Вызывается из AdaptivePoller при обнаружении изменения состояния.
-  void updateDeviceState(String id, bool isOn) {
-    final device = state.firstWhere((d) => d.id == id);
-    final updated = device.copyWith(
-      properties: {
-        ...device.properties,
-        'isOn': isOn,
-        // Если многоканальное — сохраняем текущие states
-        if (device.properties['states'] != null)
-          'states': device.properties['states'],
-      },
-    );
-    state = state.map((d) => d.id == id ? updated : d).toList();
-  }
-
-  /// Обновляет states для многоканального устройства.
-  /// Принимает список bool для каждого канала.
-  void updateDeviceStates(String id, List<bool> states) {
-    final device = state.firstWhere((d) => d.id == id);
-    final updated = device.copyWith(
-      properties: {...device.properties, 'states': states, 'isOn': states.any((s) => s)},
-    );
-    state = state.map((d) => d.id == id ? updated : d).toList();
-  }
-
-  /// Обновляет isOnline и state (online/offline) устройства.
-  /// Вызывается из AdaptivePoller при успехе/ошибке опроса.
-  void updateOnlineState(String id, bool isOnline) {
-    final device = state.firstWhere((d) => d.id == id);
-    final updated = device.copyWith(
-      isOnline: isOnline,
-      state: isOnline ? DeviceState.online : DeviceState.offline,
-    );
-    state = state.map((d) => d.id == id ? updated : d).toList();
-  }
-
-  /// Загружает устройства из БД.
-  /// При старте все устройства сбрасываются в offline — поллер обновит реальное состояние.
   Future<void> _loadDevices() async {
     final devices = await _repository.getAllDevices();
     state = devices.map((d) => d.copyWith(
@@ -95,25 +47,111 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
           'states': List<bool>.filled((d.properties['channels'] as int?) ?? 1, false),
       },
     )).toList();
+    _restoreOrder();
   }
 
-  /// Обновляет properties устройства (используется для датчиков).
-  /// Вызывается из AdaptivePoller через onSensorUpdate колбэк.
+  /// Переставляет устройства и сохраняет порядок.
+  void reorderDevices(int oldIndex, int newIndex) {
+    final list = [...state];
+    if (oldIndex < newIndex) newIndex--;
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    state = list;
+    _saveOrder();
+  }
+
+  Future<void> _saveOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = state.map((d) => d.id).toList();
+    await prefs.setString('device_order', jsonEncode(ids));
+  }
+
+  Future<void> _restoreOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final orderJson = prefs.getString('device_order');
+    if (orderJson == null) return;
+
+    final orderIds = (jsonDecode(orderJson) as List).cast<String>();
+    final list = [...state];
+
+    list.sort((a, b) {
+      final aIndex = orderIds.indexOf(a.id);
+      final bIndex = orderIds.indexOf(b.id);
+      if (aIndex == -1 && bIndex == -1) return 0;
+      if (aIndex == -1) return 1;
+      if (bIndex == -1) return -1;
+      return aIndex.compareTo(bIndex);
+    });
+
+    state = list;
+  }
+
+  // ═══════════ ОБНОВЛЕНИЕ СОСТОЯНИЙ ═══════════
+
+  void updateDeviceLocal(Device device) {
+    state = state.map((d) => d.id == device.id ? device : d).toList();
+  }
+
+  void updateDeviceState(String id, bool isOn) {
+    final device = state.firstWhere((d) => d.id == id);
+    final updated = device.copyWith(
+      properties: {
+        ...device.properties,
+        'isOn': isOn,
+        if (device.properties['states'] != null)
+          'states': device.properties['states'],
+      },
+    );
+    state = state.map((d) => d.id == id ? updated : d).toList();
+  }
+
+  void updateDeviceStates(String id, List<bool> states) {
+    final device = state.firstWhere((d) => d.id == id);
+    final updated = device.copyWith(
+      properties: {...device.properties, 'states': states, 'isOn': states.any((s) => s)},
+    );
+    state = state.map((d) => d.id == id ? updated : d).toList();
+  }
+
+  void updateOnlineState(String id, bool isOnline) {
+    final device = state.firstWhere((d) => d.id == id);
+    final updated = device.copyWith(
+      isOnline: isOnline,
+      state: isOnline ? DeviceState.online : DeviceState.offline,
+    );
+    state = state.map((d) => d.id == id ? updated : d).toList();
+  }
+
   void updateDeviceProperties(String id, Map<String, dynamic> properties) {
     final device = state.firstWhere((d) => d.id == id);
     final updated = device.copyWith(properties: properties);
     state = state.map((d) => d.id == id ? updated : d).toList();
   }
 
-  /// Добавляет новое устройство в список и БД. Логирует событие.
+  // ═══════════ CRUD ═══════════
+
   Future<void> addDevice(Device device) async {
     await _repository.saveDevice(device);
     state = [...state, device];
+    _saveOrder();
     EventLogger.log(event: 'deviceAdded', deviceId: device.id, deviceName: device.name);
   }
 
-  /// Включает устройство: оптимистично обновляет UI, отправляет команду.
-  /// При ошибке откатывает состояние. Логирует. Сбрасывает поллер.
+  Future<void> updateDevice(Device device) async {
+    await _repository.saveDevice(device);
+    await _loadDevices();
+  }
+
+  Future<void> removeDevice(String id) async {
+    final device = state.firstWhere((d) => d.id == id);
+    EventLogger.log(event: 'deviceRemoved', deviceId: id, deviceName: device.name);
+    await _repository.deleteDevice(id);
+    state = state.where((d) => d.id != id).toList();
+    _saveOrder();
+  }
+
+  // ═══════════ КОМАНДЫ ═══════════
+
   Future<bool> turnOn(String id) async {
     final device = state.firstWhere((d) => d.id == id);
     EventLogger.log(deviceId: id, deviceName: device.name, event: 'turnOn');
@@ -124,8 +162,6 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     return success;
   }
 
-  /// Выключает устройство: оптимистично обновляет UI, отправляет команду.
-  /// При ошибке откатывает состояние. Логирует. Сбрасывает поллер.
   Future<bool> turnOff(String id) async {
     final device = state.firstWhere((d) => d.id == id);
     EventLogger.log(deviceId: id, deviceName: device.name, event: 'turnOff');
@@ -136,8 +172,6 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     return success;
   }
 
-  /// Переключает канал многоканального устройства.
-  /// Оптимистично обновляет UI, при ошибке откатывает.
   Future<bool> setSwitchChannel(String id, int channel, bool value) async {
     final device = state.firstWhere((d) => d.id == id);
     onCommandSent?.call(id);
@@ -147,17 +181,14 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     return success;
   }
 
-  /// Внутренний метод: обновляет isOn в properties и сохраняет в БД.
   void _updateLocalState(String id, bool isOn) {
     final device = state.firstWhere((d) => d.id == id);
     final updated = device.copyWith(
       properties: {...device.properties, 'isOn': isOn},
     );
     state = state.map((d) => d.id == id ? updated : d).toList();
-    _repository.updateDeviceState(id, isOn ? DeviceState.online : DeviceState.online);
   }
 
-  /// Внутренний метод: обновляет states многоканального устройства.
   void _updateChannelState(String id, int channel, bool value) {
     final device = state.firstWhere((d) => d.id == id);
     final states = List<bool>.from(device.properties['states'] ?? [false, false]);
@@ -170,12 +201,10 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     state = state.map((d) => d.id == id ? updated : d).toList();
   }
 
-  /// Проверяет доступность устройства (пинг).
   Future<bool> pingDevice(String id) async {
     return await _repository.pingDevice(id);
   }
 
-  /// Устанавливает позицию штор (0-100%).
   Future<bool> setCurtainPosition(String id, int position) async {
     final device = state.firstWhere((d) => d.id == id);
     final success = await _tuyaProtocol.setCurtainPosition(device, position);
@@ -188,12 +217,10 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     return success;
   }
 
-  /// Управляет кондиционером (HVAC): вкл/выкл, температура, режим, вентилятор.
   Future<bool> setHvac(String id, {required bool power, required double targetTemp, required String mode, required int fanSpeed}) async {
     return await _repository.setHvac(id, power: power, targetTemp: targetTemp, mode: mode, fanSpeed: fanSpeed);
   }
 
-  /// Устанавливает яркость лампы (0-255).
   Future<bool> setBrightness(String id, int brightness) async {
     final device = state.firstWhere((d) => d.id == id);
     final success = await _tuyaProtocol.setBrightness(device, brightness);
@@ -206,23 +233,8 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
     return success;
   }
 
-  /// Получает DPS устройства (статус, показания датчиков).
   Future<Map<String, dynamic>?> getDeviceDps(String id) async {
     final device = state.firstWhere((d) => d.id == id);
     return await _tuyaProtocol.getStatus(device);
-  }
-
-  /// Сохраняет изменения устройства в БД и перезагружает список.
-  Future<void> updateDevice(Device device) async {
-    await _repository.saveDevice(device);
-    await _loadDevices();
-  }
-
-  /// Удаляет устройство из списка и БД. Логирует событие.
-  Future<void> removeDevice(String id) async {
-    final device = state.firstWhere((d) => d.id == id);
-    EventLogger.log(event: 'deviceRemoved', deviceId: id, deviceName: device.name);
-    await _repository.deleteDevice(id);
-    state = state.where((d) => d.id != id).toList();
   }
 }

@@ -12,7 +12,7 @@ import 'data/services/timer_engine.dart';
 import 'data/services/config_service.dart';
 import 'data/services/mailru_cloud_service.dart';
 import 'app.dart';
-import 'data/services/test_data_generator.dart';
+//import 'data/services/test_data_generator.dart';
 
 void main() {
   // Инициализация Flutter
@@ -29,7 +29,7 @@ void main() {
   _addDefaultRooms();
 
   // Генерируем тестовые данные один раз
-  TestDataGenerator.generateSensorData();
+  // TestDataGenerator.generateSensorData();
 
   // Запуск приложения с Observer'ом для автобекапа
   runApp(const SHomeAppObserver(child: SHomeApp()));

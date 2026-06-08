@@ -16,12 +16,15 @@ import '../../presentation/screens/timers_screen.dart';
 import '../../presentation/screens/statistics_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
 import '../../presentation/screens/cloud_settings_screen.dart';
+import '../../presentation/screens/video/video_screen.dart';
 
 /// Главный роутер. Содержит все маршруты приложения.
 /// initialLocation: '/' — главный экран (устройства).
 final router = GoRouter(
   initialLocation: '/',
   routes: [
+    // VIDEO
+    GoRoute(path: '/video', builder: (context, state) => const VideoScreen()),
     // Главный экран — список устройств
     GoRoute(
       path: '/',

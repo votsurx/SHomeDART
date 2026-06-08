@@ -16,6 +16,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  #==============Перемещение виджетов==========
+  reorderable_grid_view: ^2.2.8
+
   # ============ State Management ============
   flutter_riverpod: ^2.6.1     # Управление состоянием
   riverpod_annotation: ^2.6.1  # Аннотации для кодогенерации Riverpod
@@ -67,6 +70,8 @@ dependencies:
 
   # ==========Pogoda=============
   http: ^1.2.0
+  #=============VIDEO=============
+  camera: ^0.11.1
 
 dev_dependencies:
   flutter_test:

@@ -16,6 +16,8 @@ import '../../di/injection.dart';
 import '../../data/protocols/tuya_protocol.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:reorderable_grid_view/reorderable_grid_view.dart';
+import '../../application/onboarding_manager.dart';
 import 'package:http/http.dart' as http;
 class DeviceListScreen extends ConsumerStatefulWidget {
   const DeviceListScreen({super.key});
@@ -33,6 +35,14 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
   void initState() {
     super.initState();
     _initPoller(); // ← добавить
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    final isComplete = await OnboardingManager.isOnboardingComplete();
+    if (!isComplete && mounted) {
+      context.go('/onboarding');
+    }
   }
 
   Future<void> _initPoller() async {
@@ -114,16 +124,21 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
                 final width = constraints.maxWidth;
                 final crossAxisCount = width > 600 ? 3 : 2;
 
-                return GridView.builder(
+                return ReorderableGridView.count(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.85,
                   padding: const EdgeInsets.all(12),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.85,
-                  ),
-                  itemCount: devices.length,
-                  itemBuilder: (context, index) => DeviceCard(device: devices[index]),
+                  children: devices.map((device) {
+                    return DeviceCard(
+                      key: ValueKey(device.id),
+                      device: device,
+                    );
+                  }).toList(),
+                  onReorder: (oldIndex, newIndex) {
+                    ref.read(devicesProvider.notifier).reorderDevices(oldIndex, newIndex);
+                  },
                 );
               },
             ),
