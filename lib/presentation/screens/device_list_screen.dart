@@ -85,15 +85,16 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        // Слева — название приложения
-        title: const Text('SHome'),
-        centerTitle: false,
-        // По центру — время + погода
+        title: const Row(
+          children: [
+            Text('SHome', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Spacer(),
+            _TimeWeatherWidget(),
+            Spacer(),
+            SizedBox(width: 48), // компенсация иконки справа для центрирования
+          ],
+        ),
         actions: [
-          // Виджет времени и погоды по центру (через Expanded в title или тут)
-          const _TimeWeatherWidget(),
-          const SizedBox(width: 8),
-          // Шестерёнка — меню
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/menu'),

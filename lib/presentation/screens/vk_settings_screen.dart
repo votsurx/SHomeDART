@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class VkSettingsScreen extends StatefulWidget {
   const VkSettingsScreen({super.key});
@@ -41,6 +42,51 @@ class _VkSettingsScreenState extends State<VkSettingsScreen> {
     _userIdController.dispose();
     super.dispose();
   }
+  Future<void> _testNotification() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('vk_token');
+    final userId = prefs.getString('vk_user_id');
+
+    if (token == null || userId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ Сначала сохраните настройки')),
+      );
+      return;
+    }
+
+    try {
+      final randomId = DateTime.now().millisecondsSinceEpoch;
+      final url = Uri.parse(
+          'https://api.vk.com/method/messages.send'
+              '?user_id=$userId'
+              '&message=${Uri.encodeComponent('🧪 Тестовое уведомление SHome!\n✅ VK Bot работает!\n🕐 ${DateTime.now().toString().substring(0, 19)}')}'
+              '&random_id=$randomId'
+              '&access_token=$token'
+              '&v=5.199'
+      );
+
+      final response = await http.get(url);
+      debugPrint('VK Response: ${response.body}');
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Тестовое уведомление отправлено! Проверьте VK')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('❌ Ошибка отправки')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Ошибка: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +115,15 @@ class _VkSettingsScreenState extends State<VkSettingsScreen> {
                 SizedBox(width: double.infinity, child: ElevatedButton.icon(
                   onPressed: _save, icon: const Icon(Icons.save), label: const Text('Сохранить'),
                 )),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _testNotification,
+                    icon: const Icon(Icons.send),
+                    label: const Text('Отправить тестовое уведомление'),
+                  ),
+                ),
               ],
             ),
           ),
