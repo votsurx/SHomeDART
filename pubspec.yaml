@@ -72,6 +72,9 @@ dependencies:
   http: ^1.2.0
   #=============VIDEO=============
   camera: ^0.11.1
+  udp: ^5.0.1           # для SSDP/ONVIF сканирования
+  multicast_dns: ^0.3.2  # mDNS поиск
+  network_info_plus: ^6.1.0
 
 dev_dependencies:
   flutter_test:
