@@ -14,7 +14,7 @@ import 'data/services/mailru_cloud_service.dart';
 import 'app.dart';
 import 'domain/services/mqtt_service_interface.dart';
 import 'data/services/frigate_alarm_service.dart';
-//import 'data/services/test_data_generator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   // Инициализация Flutter
@@ -39,6 +39,8 @@ void main() {
   frigateAlarmService.onAlarm = (alarm) {
     debugPrint('🚨 Тревога в UI: ${alarm.cameraId} - ${alarm.label}');
   };
+
+  _connectMqtt();
   frigateAlarmService.start();
 
   // Запуск приложения с Observer'ом для автобекапа
@@ -83,6 +85,27 @@ class _SHomeAppObserverState extends State<SHomeAppObserver> with WidgetsBinding
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+Future<void> _connectMqtt() async {
+  final prefs = await SharedPreferences.getInstance();
+  final broker = prefs.getString('mqtt_broker') ?? '192.168.1.100';
+  final port = int.tryParse(prefs.getString('mqtt_port') ?? '1883') ?? 1883;
+
+  try {
+    final mqttService = getIt<MqttService>();
+    await mqttService.connect(broker, port: port);
+
+    final frigateService = FrigateAlarmService(mqttService);
+    frigateService.onAlarm = (alarm) {
+      debugPrint('🚨 Тревога: ${alarm.cameraId} - ${alarm.label}');
+    };
+    await frigateService.start();
+
+    debugPrint('✅ MQTT подключён к $broker:$port');
+  } catch (e) {
+    debugPrint('❌ Ошибка MQTT: $e');
+  }
 }
 
 /// Добавляет 4 комнаты по умолчанию при первом запуске.

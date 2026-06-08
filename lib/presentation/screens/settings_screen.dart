@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/services/config_service.dart';
+import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -197,6 +198,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
+
+          //Mqtt settings
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.settings_input_antenna, color: Colors.teal),
+              title: const Text('MQTT Брокер'),
+              subtitle: const Text('Настройки подключения к Frigate'),
+              onTap: () => context.push('/mqtt'),
+            ),
+          ),
 
           // О приложении
           Card(
