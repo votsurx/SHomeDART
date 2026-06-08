@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'local_camera_tab.dart';
 import 'scanner_tab.dart';
 import 'rtsp_cameras_tab.dart';
+import 'alarms_tab.dart';
 
 class VideoScreen extends StatefulWidget {
   const VideoScreen({super.key});
@@ -19,7 +20,7 @@ class _VideoScreenState extends State<VideoScreen> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -40,6 +41,7 @@ class _VideoScreenState extends State<VideoScreen> with SingleTickerProviderStat
             Tab(icon: Icon(Icons.phone_android), text: 'Локальная'),
             Tab(icon: Icon(Icons.wifi_find), text: 'Сканер'),
             Tab(icon: Icon(Icons.videocam), text: 'RTSP'),
+            Tab(icon: Icon(Icons.warning_amber), text: 'Тревоги'),
           ],
         ),
       ),
@@ -49,6 +51,7 @@ class _VideoScreenState extends State<VideoScreen> with SingleTickerProviderStat
           LocalCameraTab(),
           ScannerTab(),
           RtspCamerasTab(),
+          AlarmsTab(),
         ],
       ),
     );

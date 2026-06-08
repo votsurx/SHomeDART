@@ -12,6 +12,8 @@ import 'data/services/timer_engine.dart';
 import 'data/services/config_service.dart';
 import 'data/services/mailru_cloud_service.dart';
 import 'app.dart';
+import 'domain/services/mqtt_service_interface.dart';
+import 'data/services/frigate_alarm_service.dart';
 //import 'data/services/test_data_generator.dart';
 
 void main() {
@@ -30,6 +32,14 @@ void main() {
 
   // Генерируем тестовые данные один раз
   // TestDataGenerator.generateSensorData();
+
+  // MQTT + Frigate
+  final mqttService = getIt<MqttService>();
+  final frigateAlarmService = FrigateAlarmService(mqttService);
+  frigateAlarmService.onAlarm = (alarm) {
+    debugPrint('🚨 Тревога в UI: ${alarm.cameraId} - ${alarm.label}');
+  };
+  frigateAlarmService.start();
 
   // Запуск приложения с Observer'ом для автобекапа
   runApp(const SHomeAppObserver(child: SHomeApp()));
