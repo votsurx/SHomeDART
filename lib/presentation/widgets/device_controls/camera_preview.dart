@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import '../../../domain/models/device.dart';
 
 class DeviceCameraPreview extends StatelessWidget {
@@ -8,32 +9,117 @@ class DeviceCameraPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cameraType = device.properties['cameraType'] as String? ?? 'rtsp';
+    final cameraType = device.properties['cameraType'] as String? ?? 'device';
 
     if (cameraType == 'rtsp') {
-      return GestureDetector(
-        onTap: () => _openFullScreen(context),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.videocam, size: 28, color: Colors.blue),
-            const SizedBox(height: 4),
-            Text(device.properties['rtspUrl'] as String? ?? 'RTSP', style: const TextStyle(fontSize: 9), maxLines: 2, overflow: TextOverflow.ellipsis),
-          ],
-        ),
-      );
+      return _RtspPreview(device: device);
     }
 
     return GestureDetector(
-      onTap: () => _openFullScreen(context),
+      onTap: () => _openDeviceFullScreen(context),
       child: _MiniPreview(device: device),
     );
   }
 
-  void _openFullScreen(BuildContext context) {
+  void _openDeviceFullScreen(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => _FullScreenCamera(device: device)));
   }
 }
+
+// ═══════════ RTSP через VLC ═══════════
+
+class _RtspPreview extends StatefulWidget {
+  final Device device;
+  const _RtspPreview({required this.device});
+
+  @override
+  State<_RtspPreview> createState() => _RtspPreviewState();
+}
+
+class _RtspPreviewState extends State<_RtspPreview> {
+  VlcPlayerController? _controller;
+  bool _isReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVlc();
+  }
+
+  Future<void> _initVlc() async {
+    final url = widget.device.properties['rtspUrl'] as String?;
+    if (url == null || url.isEmpty) return;
+
+    _controller = VlcPlayerController.network(
+      url,
+      hwAcc: HwAcc.full,
+      autoPlay: true,
+      options: VlcPlayerOptions(
+        advanced: VlcAdvancedOptions([VlcAdvancedOptions.networkCaching(1000)]),
+      ),
+    );
+
+    await _controller!.initialize();
+    if (!mounted) return;
+    setState(() => _isReady = true);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isReady || _controller == null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.videocam, size: 28, color: Colors.blue),
+          const SizedBox(height: 4),
+          Text(
+            widget.device.properties['rtspUrl'] as String? ?? 'RTSP',
+            style: const TextStyle(fontSize: 8),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => Scaffold(
+            backgroundColor: Colors.black,
+            appBar: AppBar(
+              title: Text(widget.device.name),
+              backgroundColor: Colors.black,
+            ),
+            body: Center(
+              child: VlcPlayer(
+                controller: _controller!,
+                aspectRatio: 16 / 9,
+                placeholder: const Center(child: CircularProgressIndicator(color: Colors.white)),
+              ),
+            ),
+          ),
+        ));
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: VlcPlayer(
+          controller: _controller!,
+          aspectRatio: 16 / 9,
+          placeholder: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════ КАМЕРА УСТРОЙСТВА ═══════════
 
 class _MiniPreview extends StatefulWidget {
   final Device device;

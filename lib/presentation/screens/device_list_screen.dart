@@ -122,7 +122,7 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
                 : LayoutBuilder(
               builder: (context, constraints) {
                 final width = constraints.maxWidth;
-                final crossAxisCount = width > 600 ? 3 : 2;
+                final crossAxisCount = width > 900 ? 5 : (width > 600 ? 4 : (width > 400 ? 3 : 2));
 
                 return ReorderableGridView.count(
                   crossAxisCount: crossAxisCount,

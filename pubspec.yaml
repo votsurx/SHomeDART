@@ -75,6 +75,7 @@ dependencies:
   udp: ^5.0.1           # для SSDP/ONVIF сканирования
   multicast_dns: ^0.3.2  # mDNS поиск
   network_info_plus: ^6.1.0
+  flutter_vlc_player: ^7.4.4
 
 dev_dependencies:
   flutter_test:
