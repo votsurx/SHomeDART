@@ -109,6 +109,7 @@ class AdaptivePoller {
 
     try {
       final result = await _tuyaProtocol.getStatus(device);
+      _talker.debug('Status result for ${device.name}: $result');
 
       if (result != null && result['dps'] != null) {
         state.onSuccess();

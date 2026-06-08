@@ -71,6 +71,9 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
         normalInterval: interval,
       );
       _poller!.start();
+      ref.read(devicesProvider.notifier).onCommandSent = (deviceId) {
+        _poller?.forceReset(deviceId);
+      };
     });
   }
 

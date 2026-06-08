@@ -140,6 +140,7 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
   Future<void> updateDevice(Device device) async {
     await _repository.saveDevice(device);
     await _loadDevices();
+    onCommandSent?.call(device.id);
   }
 
   Future<void> removeDevice(String id) async {
