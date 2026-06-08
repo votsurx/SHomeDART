@@ -1,4 +1,12 @@
-Write-Host "🧪 Запуск тестов SHome..." -ForegroundColor Cyan
+Write-Host "🧪 Запуск тестов SHome (последовательно)..." -ForegroundColor Cyan
 Write-Host ""
 
-flutter test --reporter expanded
+flutter test --concurrency=1
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host ""
+    Write-Host "✅ Все тесты пройдены!" -ForegroundColor Green
+} else {
+    Write-Host ""
+    Write-Host "❌ Некоторые тесты упали" -ForegroundColor Red
+}

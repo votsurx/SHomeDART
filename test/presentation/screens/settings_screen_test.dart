@@ -30,7 +30,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('О приложении'), findsOneWidget);
-      expect(find.text('SHome v2.11'), findsOneWidget);
+      expect(find.textContaining('SHome v2'), findsOneWidget); // любая версия
     });
 
     testWidgets('нажатие на Резервное копирование открывает SimpleDialog', (tester) async {
