@@ -18,12 +18,18 @@ import '../../presentation/screens/settings_screen.dart';
 import '../../presentation/screens/cloud_settings_screen.dart';
 import '../../presentation/screens/video/video_screen.dart';
 import '../../presentation/screens/mqtt_settings_screen.dart';
+import '../../presentation/screens/vk_settings_screen.dart';
 
 /// Главный роутер. Содержит все маршруты приложения.
 /// initialLocation: '/' — главный экран (устройства).
 final router = GoRouter(
   initialLocation: '/',
   routes: [
+    // VK
+    GoRoute(
+      path: '/vk',
+      builder: (context, state) => const VkSettingsScreen(),
+    ),
     // MQTT Settings
     GoRoute(
       path: '/mqtt',

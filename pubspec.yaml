@@ -76,6 +76,7 @@ dependencies:
   multicast_dns: ^0.3.2  # mDNS поиск
   network_info_plus: ^6.1.0
   flutter_vlc_player: ^7.4.4
+  lottie: ^3.3.3
 
 dev_dependencies:
   flutter_test:
@@ -103,3 +104,4 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+    - assets/animations/

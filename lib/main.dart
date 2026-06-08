@@ -15,6 +15,7 @@ import 'app.dart';
 import 'domain/services/mqtt_service_interface.dart';
 import 'data/services/frigate_alarm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'data/services/vk_notification_service.dart';
 
 void main() {
   // Инициализация Flutter
@@ -97,8 +98,16 @@ Future<void> _connectMqtt() async {
     await mqttService.connect(broker, port: port);
 
     final frigateService = FrigateAlarmService(mqttService);
-    frigateService.onAlarm = (alarm) {
+    frigateService.onAlarm = (alarm) async {
       debugPrint('🚨 Тревога: ${alarm.cameraId} - ${alarm.label}');
+
+      final vk = VkNotificationService();
+      await vk.loadSettings();
+      await vk.sendAlarm(
+        cameraName: 'Камера ${alarm.cameraId}',
+        label: alarm.label,
+        score: alarm.score,
+      );
     };
     await frigateService.start();
 

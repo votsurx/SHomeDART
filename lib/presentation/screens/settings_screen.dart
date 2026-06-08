@@ -209,6 +209,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          // VK настройки
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.notifications, color: Colors.blue),
+              title: const Text('VK Уведомления'),
+              subtitle: const Text('Пуш при тревогах'),
+              onTap: () => context.push('/vk'),
+            ),
+          ),
+
           // О приложении
           Card(
             child: ListTile(

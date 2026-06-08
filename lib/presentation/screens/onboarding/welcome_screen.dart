@@ -1,8 +1,10 @@
 /// Приветственный экран онбординга.
 /// Показывается при первом запуске приложения.
 /// Кнопка "Начать" ведёт на сканер устройств.
+library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -18,10 +20,12 @@ class WelcomeScreen extends StatelessWidget {
             children: [
               const Spacer(),
               // Иконка дома
-              Icon(
-                Icons.home_rounded,
-                size: 120,
-                color: Theme.of(context).colorScheme.primary,
+              // Вместо Icon(Icons.home_rounded) поставить:
+              Lottie.asset(
+                'assets/animations/Home.json',
+                width: 250,
+                height: 250,
+                repeat: true,
               ),
               const SizedBox(height: 32),
               // Название приложения
