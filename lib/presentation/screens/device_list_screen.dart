@@ -185,6 +185,7 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
                     DropdownMenuItem(value: DeviceType.light, child: Text('Лампа')),
                     DropdownMenuItem(value: DeviceType.curtain, child: Text('Шторы')),
                     DropdownMenuItem(value: DeviceType.hvac, child: Text('Кондиционер')),
+                    DropdownMenuItem(value: DeviceType.robotVacuum, child: Text('🤖 Робот-пылесос')),
                   ],
                   onChanged: (value) => setDialogState(() => _selectedType = value ?? DeviceType.outlet),
                 ),
@@ -235,6 +236,18 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
       case DeviceType.curtain: return {'position': 100, 'isMoving': false};
       case DeviceType.hvac: return {'isOn': false, 'temperature': 22, 'targetTemp': 24, 'mode': 'auto', 'fanSpeed': 1};
       case DeviceType.light: return {'brightness': 255, 'isOn': false};
+      case DeviceType.robotVacuum: return {
+        'isOn': false,
+        'battery_percentage': 0,
+        'clean_time': 0,
+        'clean_area': 0,
+        'suction': 'normal',
+        'cistern': 'low',
+        'status': 'unknown',
+        'do_not_disturb': false,
+        'y_mop_104': false,
+        'volume_set': 54,
+      };
       default: return {'isOn': false};
     }
   }

@@ -60,6 +60,7 @@ const _$DeviceTypeEnumMap = {
   DeviceType.light: 'light',
   DeviceType.camera: 'camera',
   DeviceType.button: 'button',
+  DeviceType.robotVacuum: 'robotVacuum',
 };
 
 const _$DeviceStateEnumMap = {

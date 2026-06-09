@@ -66,6 +66,7 @@ enum DeviceType {
   light,      // Лампа (диммируемая)
   camera,     // Камера (RTSP)
   button,     // Zigbee кнопка
+  robotVacuum,// Robot пылесос
 }
 
 /// Подтипы датчиков для DeviceType.sensor.

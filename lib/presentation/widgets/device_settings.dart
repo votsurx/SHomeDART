@@ -9,6 +9,11 @@ class DeviceSettings {
     final nameController = TextEditingController(text: device.name);
     final rooms = ref.watch(roomsProvider);
     String selectedRoomId = device.roomId;
+    // Проверяем что selectedRoomId существует в списке комнат
+    final roomIds = rooms.map((r) => r.id).toList();
+    if (!roomIds.contains(selectedRoomId) && rooms.isNotEmpty) {
+      selectedRoomId = rooms.first.id;
+    }
 
     // Поля для не-камер
     final localKeyController = TextEditingController(text: device.localKey ?? '');
@@ -40,7 +45,7 @@ class DeviceSettings {
 
                 // ═══════ КОМНАТА (для всех) ═══════
                 DropdownButtonFormField<String>(
-                  initialValue: selectedRoomId,
+                  value: selectedRoomId,
                   decoration: const InputDecoration(labelText: 'Комната', prefixIcon: Icon(Icons.meeting_room)),
                   items: rooms.map((r) => DropdownMenuItem(value: r.id, child: Text('${r.icon ?? "🏠"} ${r.name}'))).toList(),
                   onChanged: (v) { if (v != null) setModalState(() => selectedRoomId = v); },

@@ -2,7 +2,7 @@
 /// Опрашивает все устройства параллельно через TuyaProtocol.getStatus().
 /// Адаптивный интервал: 2с → 1мин → 5мин при ошибках.
 /// Обнаруживает изменения состояния и обновляет UI через колбэки.
-/// Поддерживает одноканальные, многоканальные устройства и датчики.
+/// Поддерживает одноканальные, многоканальные устройства, датчики и робот-пылесос.
 library;
 import 'dart:async';
 import 'package:talker/talker.dart';
@@ -16,30 +16,19 @@ import '../../domain/models/scene.dart';
 class AdaptivePoller {
   final TuyaProtocol _tuyaProtocol;
   final Talker _talker;
-  /// Колбэк при изменении состояния одноканального устройства (вкл/выкл)
   final void Function(String deviceId, bool isOn) _onStateChanged;
-  /// Колбэк при изменении онлайн-статуса устройства
   final void Function(String deviceId, bool isOnline) _onOnlineChanged;
-  /// Колбэк при изменении состояний многоканального устройства
   final void Function(String deviceId, List<bool> states) _onStatesChanged;
-  /// Колбэк при обновлении данных датчика (температура, влажность, мощность...)
   final void Function(String deviceId, Map<String, dynamic> properties)? onSensorUpdate;
 
-  /// Интервалы замедления при ошибках
   static const slowInterval = Duration(minutes: 1);
   static const verySlowInterval = Duration(minutes: 5);
-  /// Количество ошибок до замедления
   static const maxErrorsBeforeSlowdown = 3;
 
-  /// Базовый интервал опроса (из настроек, по умолчанию 2с)
   final Duration _normalInterval;
-  /// Состояния опроса для каждого устройства
   final Map<String, _DevicePollState> _states = {};
-  /// какая то хрень!
   final Map<String, Completer<void>> _pollCompleters = {};
-  /// Таймер для периодического опроса
   Timer? _timer;
-  /// Список устройств для опроса
   List<Device> _devices = [];
 
   AdaptivePoller(
@@ -52,9 +41,6 @@ class AdaptivePoller {
         Duration normalInterval = const Duration(seconds: 2),
       }) : _normalInterval = normalInterval;
 
-  /// Опрашивает устройство немедленно и возвращает Future,
-  /// который завершится когда опрос закончится.
-  /// Полезно для тестов и ручных команд из UI.
   Future<void> pollOnce(String deviceId) {
     final completer = Completer<void>();
     _pollCompleters[deviceId] = completer;
@@ -62,20 +48,17 @@ class AdaptivePoller {
     return completer.future;
   }
 
-  /// Запускает периодический опрос. Первый опрос — немедленно.
   void start() {
     _talker.info('AdaptivePoller started (interval: ${_normalInterval.inSeconds}s)');
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     _tick();
   }
 
-  /// Обновляет список устройств для опроса.
   void updateDevices(List<Device> devices) {
     _devices = devices;
     _states.removeWhere((id, _) => !devices.any((d) => d.id == id));
   }
 
-  /// Принудительный сброс интервала опроса (после ручной команды).
   void forceReset(String deviceId) {
     final state = _states[deviceId];
     if (state != null) {
@@ -83,7 +66,6 @@ class AdaptivePoller {
     }
   }
 
-  /// Проверяет, нужно ли опросить устройство, и запускает опрос.
   void _tick() {
     final now = DateTime.now();
     for (final device in _devices) {
@@ -95,14 +77,11 @@ class AdaptivePoller {
     }
   }
 
-  /// Обновляет устройство в списке _devices (для актуализации properties).
   void _updateDeviceInList(Device updated) {
     final idx = _devices.indexWhere((d) => d.id == updated.id);
     if (idx != -1) _devices[idx] = updated;
   }
 
-  /// Опрашивает одно устройство: получает DPS, анализирует изменения.
-  /// Поддерживает одноканальные, многоканальные и датчики.
   Future<void> _pollDevice(Device device, _DevicePollState state) async {
     if (state.polling) return;
     state.polling = true;
@@ -116,6 +95,51 @@ class AdaptivePoller {
         _onOnlineChanged(device.id, true);
 
         final dps = result['dps'] as Map<String, dynamic>;
+
+        // --- Робот-пылесос ---
+        if (device.type == DeviceType.robotVacuum) {
+          final newProperties = <String, dynamic>{...device.properties};
+
+          void readBool(dynamic key, String prop) {
+            final val = dps[key] ?? dps[key.toString()];
+            if (val != null) newProperties[prop] = val == true || val == 1;
+          }
+          void readInt(dynamic key, String prop) {
+            final val = dps[key] ?? dps[key.toString()];
+            if (val != null) newProperties[prop] = val is num ? val : int.tryParse(val.toString()) ?? 0;
+          }
+          void readString(dynamic key, String prop) {
+            final val = dps[key] ?? dps[key.toString()];
+            if (val != null) newProperties[prop] = val.toString();
+          }
+
+          readBool(1, 'isOn');
+          readBool(3, 'switch_charge');
+          readString(4, 'mode');
+          readString(5, 'status');
+          readInt(6, 'clean_time');
+          readInt(7, 'clean_area');
+          readInt(8, 'battery_percentage');
+          readString(9, 'suction');
+          readString(10, 'cistern');
+          readBool(25, 'do_not_disturb');
+          readInt(26, 'volume_set');
+          readBool(104, 'y_mop_104');
+
+          final updated = device.copyWith(properties: newProperties);
+          _updateDeviceInList(updated);
+          onSensorUpdate?.call(device.id, newProperties);
+
+          // Проверяем изменение isOn
+          final realIsOn = newProperties['isOn'] == true;
+          final currentIsOn = device.properties['isOn'] == true;
+          if (realIsOn != currentIsOn) {
+            _onStateChanged(device.id, realIsOn);
+            try {
+              EventLogger.log(deviceId: device.id, deviceName: device.name, event: realIsOn ? 'turnOn' : 'turnOff');
+            } catch (_) {}
+          }
+        }
 
         // --- Многоканальные устройства ---
         final channels = device.properties['channels'] as int?
@@ -145,8 +169,8 @@ class AdaptivePoller {
             _talker.info('Multi-channel state changed: $currentStates');
             _onStatesChanged(device.id, currentStates);
           }
-        } else {
-          // --- Одноканальные устройства ---
+        } else if (device.type != DeviceType.robotVacuum) {
+          // --- Одноканальные устройства (кроме пылесоса) ---
           final dpsIndex = device.dpsIndex ?? 1;
           final rawValue = dps[dpsIndex] ?? dps[dpsIndex.toString()];
 
@@ -157,14 +181,8 @@ class AdaptivePoller {
             if (realIsOn != currentIsOn) {
               _onStateChanged(device.id, realIsOn);
               try {
-                EventLogger.log(
-                  deviceId: device.id,
-                  deviceName: device.name,
-                  event: realIsOn ? 'turnOn' : 'turnOff',
-                );
-              } catch (_) {
-                // Игнорируем ошибки логирования (тесты)
-              }
+                EventLogger.log(deviceId: device.id, deviceName: device.name, event: realIsOn ? 'turnOn' : 'turnOff');
+              } catch (_) {}
             }
           }
           // --- Датчики ---
@@ -172,10 +190,10 @@ class AdaptivePoller {
             final sensorDps = device.properties['sensorDps'] ?? device.dpsIndex ?? 21;
             final divider = (device.properties['sensorDivider'] as num?)?.toDouble() ?? 10.0;
             final sensorType = device.properties['sensorType'] as String?;
-            final rawValue = dps[sensorDps] ?? dps[sensorDps.toString()];
+            final rawSensorValue = dps[sensorDps] ?? dps[sensorDps.toString()];
 
-            if (rawValue != null) {
-              final value = (rawValue as num).toDouble() / divider;
+            if (rawSensorValue != null) {
+              final value = (rawSensorValue as num).toDouble() / divider;
 
               final updatedProperties = {
                 ...device.properties,
@@ -194,7 +212,6 @@ class AdaptivePoller {
           }
         }
       } else {
-        // Ошибка — устройство не ответило
         state.onError();
         _onOnlineChanged(device.id, false);
       }
@@ -203,16 +220,13 @@ class AdaptivePoller {
       _onOnlineChanged(device.id, false);
     } finally {
       state.polling = false;
-      _pollCompleters.remove(device.id)?.complete(); // ← добавить
+      _pollCompleters.remove(device.id)?.complete();
     }
   }
 
   void stop() => _timer?.cancel();
 }
 
-/// Проверяет сенсорные триггеры для сцен.
-/// Сравнивает текущие показания датчика с порогами из активных сцен.
-/// При срабатывании выполняет сцену.
 Future<void> _checkSensorTriggers(Device sensorDevice, Map<String, dynamic> dps) async {
   try {
     final sceneRepo = getIt<SceneRepository>();
@@ -272,8 +286,6 @@ Future<void> _checkSensorTriggers(Device sensorDevice, Map<String, dynamic> dps)
   }
 }
 
-/// Состояние опроса для одного устройства.
-/// Хранит счётчик ошибок, текущий интервал, флаг опроса.
 class _DevicePollState {
   int errorCount = 0;
   Duration interval;
@@ -285,14 +297,12 @@ class _DevicePollState {
       : interval = normalInterval,
         _normalInterval = normalInterval;
 
-  /// Сбрасывает счётчик ошибок и интервал на базовый.
   void onSuccess() {
     errorCount = 0;
     interval = _normalInterval;
     nextPollAt = DateTime.now().add(interval);
   }
 
-  /// Увеличивает счётчик ошибок и замедляет интервал.
   void onError() {
     errorCount++;
     if (errorCount >= AdaptivePoller.maxErrorsBeforeSlowdown * 2) {
@@ -303,7 +313,6 @@ class _DevicePollState {
     nextPollAt = DateTime.now().add(interval);
   }
 
-  /// Принудительный сброс на базовый интервал (после ручной команды).
   void reset() {
     errorCount = 0;
     interval = _normalInterval;

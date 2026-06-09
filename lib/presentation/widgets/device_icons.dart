@@ -17,6 +17,7 @@ IconData getDeviceIcon(Device device) {
     case DeviceType.curtain: return Icons.blinds;
     case DeviceType.hvac: return Icons.ac_unit;
     case DeviceType.camera: return Icons.videocam;
+    case DeviceType.robotVacuum: return Icons.smart_toy;
     default: return Icons.devices;
   }
 }
