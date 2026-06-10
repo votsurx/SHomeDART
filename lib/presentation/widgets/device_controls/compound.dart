@@ -98,13 +98,10 @@ class DeviceCompound extends ConsumerWidget {
     final iconName = entry.value['icon'] as String? ?? '';
     final icon = _getIconFromName(iconName, label, isOn);
     final color = isOn ? Colors.green : Colors.grey;
+    final dpsNumber = int.tryParse(entry.key) ?? 1;
 
     return _btn(ref, ctx, online, icon, color, () {
-      if (isOn) {
-        ref.read(devicesProvider.notifier).turnOff(device.id);
-      } else {
-        ref.read(devicesProvider.notifier).turnOn(device.id);
-      }
+      ref.read(devicesProvider.notifier).setSwitchChannel(device.id, dpsNumber, !isOn);
     });
   }
 
@@ -114,8 +111,11 @@ class DeviceCompound extends ConsumerWidget {
     final iconName = entry.value['icon'] as String? ?? '';
     final icon = _getIconFromName(iconName, label, isOn);
     final color = isOn ? Colors.blue : Colors.grey;
+    final dpsNumber = int.tryParse(entry.key) ?? 1;
 
-    return _btn(ref, ctx, online, icon, color, () {});
+    return _btn(ref, ctx, online, icon, color, () {
+      ref.read(devicesProvider.notifier).setSwitchChannel(device.id, dpsNumber, !isOn);
+    });
   }
 
   IconData _getIconFromName(String? iconName, String label, bool isOn) {
