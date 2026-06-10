@@ -42,7 +42,9 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen> {
 
   /// Запрашивает DPS для всех устройств.
   Future<void> _updateDps() async {
-    final devices = ref.read(devicesProvider);
+    final devices = ref.read(devicesProvider)
+        .where((d) => d.type == DeviceType.sensor && d.properties['sensorType'] == 'power')
+        .toList();
     for (final device in devices) {
       if (device.deviceId != null) {
         final dps = await ref.read(devicesProvider.notifier).getDeviceDps(device.id);
@@ -55,7 +57,10 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final devices = ref.watch(devicesProvider);
+    final allDevices = ref.watch(devicesProvider);
+    final devices = allDevices
+        .where((d) => d.type == DeviceType.sensor && d.properties['sensorType'] == 'power')
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Энергомониторинг')),
