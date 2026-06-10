@@ -113,7 +113,13 @@ class RoomsManageScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
           ElevatedButton(
             onPressed: () {
-              ref.read(roomsProvider.notifier).deleteRoomAndMoveDevices(room.id);
+              // Переносим устройства в "all"
+              final devices = ref.read(devicesProvider);
+              for (final device in devices.where((d) => d.roomId == room.id)) {
+                ref.read(devicesProvider.notifier).updateDevice(device.copyWith(roomId: 'all'));
+              }
+              // Удаляем комнату
+              ref.read(roomsProvider.notifier).deleteRoom(room.id);
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Комната «${room.name}» удалена')));
             },

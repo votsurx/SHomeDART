@@ -8,7 +8,7 @@ import '../../data/services/event_logger.dart';
 import '../../domain/models/room.dart';
 import '../../domain/repositories/room_repository.dart';
 import '../../di/injection.dart';
-import 'devices_provider.dart';
+//import 'devices_provider.dart';
 
 /// Глобальный провайдер списка комнат.
 final roomsProvider = StateNotifierProvider<RoomsNotifier, List<Room>>((ref) {
@@ -49,22 +49,5 @@ class RoomsNotifier extends StateNotifier<List<Room>> {
     final updated = room.copyWith(name: newName);
     await _repository.saveRoom(updated);
     state = state.map((r) => r.id == id ? updated : r).toList();
-  }
-
-  /// Удаляет комнату и переносит все её устройства в категорию "all".
-  /// Логирует событие roomRemoved.
-  void deleteRoomAndMoveDevices(String roomId) async {
-    final room = state.firstWhere((r) => r.id == roomId);
-    EventLogger.log(event: 'roomRemoved', roomName: room.name);
-
-    // Получаем DevicesNotifier через GetIt
-    final devicesNotifier = getIt<DevicesNotifier>();
-    final devices = devicesNotifier.devices;
-    // Все устройства из удаляемой комнаты переносим в "all"
-    for (final device in devices.where((d) => d.roomId == roomId)) {
-      devicesNotifier.updateDevice(device.copyWith(roomId: 'all'));
-    }
-    await _repository.deleteRoom(roomId);
-    state = state.where((r) => r.id != roomId).toList();
   }
 }
