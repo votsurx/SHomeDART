@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import '../../../domain/models/device.dart';
 
 class DeviceCameraPreview extends StatelessWidget {
@@ -37,83 +38,62 @@ class _RtspPreview extends StatefulWidget {
 }
 
 class _RtspPreviewState extends State<_RtspPreview> {
-  VlcPlayerController? _controller;
-  bool _isReady = false;
+  int _refreshKey = 0;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _initVlc();
-  }
-
-  Future<void> _initVlc() async {
-    final url = widget.device.properties['rtspUrl'] as String?;
-    if (url == null || url.isEmpty) return;
-
-    _controller = VlcPlayerController.network(
-      url,
-      hwAcc: HwAcc.full,
-      autoPlay: true,
-      options: VlcPlayerOptions(
-        advanced: VlcAdvancedOptions([VlcAdvancedOptions.networkCaching(1000)]),
-      ),
-    );
-
-    await _controller!.initialize();
-    if (!mounted) return;
-    setState(() => _isReady = true);
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) setState(() => _refreshKey++);
+    });
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
+  String get _rtspUrl => widget.device.properties['rtspUrl'] as String? ?? '';
+
   @override
   Widget build(BuildContext context) {
-    if (!_isReady || _controller == null) {
-      return Column(
+    if (_rtspUrl.isEmpty) {
+      return const Icon(Icons.videocam, size: 28, color: Colors.grey);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        // Полноэкранный — пока заглушка
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Полноэкранный просмотр будет позже')),
+        );
+      },
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.videocam, size: 28, color: Colors.blue),
           const SizedBox(height: 4),
           Text(
-            widget.device.properties['rtspUrl'] as String? ?? 'RTSP',
-            style: const TextStyle(fontSize: 8),
+            _rtspUrl,
+            style: const TextStyle(fontSize: 7),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-        ],
-      );
-    }
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => Scaffold(
-            backgroundColor: Colors.black,
-            appBar: AppBar(
-              title: Text(widget.device.name),
-              backgroundColor: Colors.black,
+          const SizedBox(height: 2),
+          Container(
+            width: 60,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(4),
             ),
-            body: Center(
-              child: VlcPlayer(
-                controller: _controller!,
-                aspectRatio: 16 / 9,
-                placeholder: const Center(child: CircularProgressIndicator(color: Colors.white)),
-              ),
+            child: const Center(
+              child: Icon(Icons.play_circle, color: Colors.blue, size: 20),
             ),
           ),
-        ));
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: VlcPlayer(
-          controller: _controller!,
-          aspectRatio: 16 / 9,
-          placeholder: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
+        ],
       ),
     );
   }
