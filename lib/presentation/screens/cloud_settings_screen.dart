@@ -52,9 +52,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
   Future<void> _loadLastSync() async {
     final lastSync = await _storage.read(key: 'mailru_last_sync');
     if (mounted) {
-      setState(() {
-        _lastSync = lastSync;
-      });
+      setState(() => _lastSync = lastSync);
     }
   }
 
@@ -91,9 +89,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
         _showSnack('❌ Не удалось подключиться. Проверьте логин и пароль приложения.');
       }
     } catch (e) {
-      if (mounted) {
-        _showSnack('❌ Ошибка: $e');
-      }
+      if (mounted) _showSnack('❌ Ошибка: $e');
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
@@ -134,7 +130,8 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
 
       final service = MailruCloudService(login: login, password: password);
       final json = await ConfigService.buildConfigJson();
-      final success = await service.uploadBackup(json);
+      final encrypted = ConfigService.encrypt(json);
+      final success = await service.uploadBackup(encrypted);
 
       if (!mounted) return;
 
@@ -176,7 +173,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
         return;
       }
 
-      // Показываем список бекапов на выбор
       final selected = await showDialog<String>(
         context: context,
         builder: (ctx) => SimpleDialog(
@@ -190,10 +186,16 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
 
       if (selected == null) return;
 
-      final json = await service.downloadBackup(selected);
+      final encrypted = await service.downloadBackup(selected);
       if (!mounted) return;
 
-      if (json != null) {
+      if (encrypted != null) {
+        String json;
+        try {
+          json = ConfigService.decrypt(encrypted);
+        } catch (_) {
+          json = encrypted;
+        }
         await ConfigService.restoreFromJson(json);
         _showSnack('✅ Бекап "$selected" восстановлен');
       } else {
@@ -222,7 +224,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Статус подключения
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -251,14 +252,8 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 12),
-
-          // Форма подключения ИЛИ управление
-          if (!_isConnected)
-            _buildLoginForm()
-          else
-            _buildConnectedControls(),
+          if (!_isConnected) _buildLoginForm() else _buildConnectedControls(),
         ],
       ),
     );
@@ -273,7 +268,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
           children: [
             Text('🔗 Подключение', style: Theme.of(context).textTheme.titleMedium),
             const Divider(),
-
             TextField(
               controller: _loginController,
               decoration: const InputDecoration(
@@ -284,7 +278,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 12),
-
             TextField(
               controller: _passwordController,
               decoration: const InputDecoration(
@@ -294,8 +287,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 8),
-
-            // Подсказка
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -311,7 +302,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -331,7 +321,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
   Widget _buildConnectedControls() {
     return Column(
       children: [
-        // Кнопка Отключить
         Card(
           child: ListTile(
             leading: const Icon(Icons.link_off, color: Colors.red),
@@ -339,10 +328,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
             onTap: _disconnect,
           ),
         ),
-
         const SizedBox(height: 12),
-
-        // Автосинхронизация
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -361,10 +347,7 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
             ),
           ),
         ),
-
         const SizedBox(height: 12),
-
-        // Управление бекапами
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -373,7 +356,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
               children: [
                 Text('📋 Управление бекапами', style: Theme.of(context).textTheme.titleMedium),
                 const Divider(),
-
                 ListTile(
                   leading: const Icon(Icons.upload, color: Colors.blue),
                   title: const Text('Загрузить в облако'),
@@ -383,7 +365,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                       : const Icon(Icons.chevron_right),
                   onTap: _isUploading ? null : _uploadBackup,
                 ),
-
                 ListTile(
                   leading: const Icon(Icons.download, color: Colors.green),
                   title: const Text('Скачать из облака'),
@@ -393,7 +374,6 @@ class _CloudSettingsScreenState extends State<CloudSettingsScreen> {
                       : const Icon(Icons.chevron_right),
                   onTap: _isDownloading ? null : _downloadBackup,
                 ),
-
                 if (_lastSync != null) ...[
                   const Divider(),
                   Text(

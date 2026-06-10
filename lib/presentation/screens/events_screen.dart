@@ -96,19 +96,22 @@ class _EventsScreenState extends State<EventsScreen> {
         itemCount: _events.length,
         itemBuilder: (context, index) {
           final event = _events[index];
-          final time = DateTime.parse(event.timestamp);
+          final timestamp = event.timestamp;
+          if (timestamp == null) return const SizedBox.shrink();
+
+          final time = DateTime.parse(timestamp);
           final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
 
           return Card(
             child: ListTile(
-              leading: Icon(_eventIcon(event.event), color: _eventColor(event.event)),
+              leading: Icon(_eventIcon(event.event ?? ''), color: _eventColor(event.event ?? '')),
               title: Text(
-                event.sceneName != null ? '${event.sceneName}' : event.deviceName,
+                event.sceneName != null ? '${event.sceneName}' : (event.deviceName ?? ''),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               subtitle: Text(
-                event.sceneName != null ? 'Сцена выполнена' : _eventLabel(event.event),
-                style: TextStyle(color: _eventColor(event.event), fontSize: 12),
+                event.sceneName != null ? 'Сцена выполнена' : _eventLabel(event.event ?? ''),
+                style: TextStyle(color: _eventColor(event.event ?? ''), fontSize: 12),
               ),
               trailing: Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
             ),

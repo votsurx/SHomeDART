@@ -46,8 +46,10 @@ class MailruCloudService {
       final client = _createClient();
       await _createFolderIfNeeded(client, '/$_backupFolder');
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'backup_$timestamp.json';
+      final now = DateTime.now();
+      final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}'
+          '_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final fileName = 'backup_$dateStr.json';
       final filePath = '/$_backupFolder/$fileName';
 
       final data = Uint8List.fromList(utf8.encode(jsonConfig));

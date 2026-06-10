@@ -1,7 +1,8 @@
 /// Сервис экспорта/импорта/автобекапа конфигурации.
-/// Экспорт: собирает все данные из БД в JSON, шарит через Share (пользователь сам выбирает куда сохранить).
-/// Импорт: читает JSON через FilePicker (видит Downloads, облака, почту).
-/// Автобекап: сохраняет копию локально, можно восстановить без выбора файла.
+/// Экспорт: собирает все данные из БД в JSON, шарит через Share.
+/// Импорт: читает JSON через FilePicker.
+/// Автобекап: сохраняет копию локально.
+/// Все бекапы шифруются (XOR + Base64).
 library;
 
 import 'dart:convert';
@@ -15,41 +16,69 @@ import '../local/entities/device_entity.dart';
 import '../local/entities/room_entity.dart';
 import '../local/entities/scene_entity.dart';
 import '../../domain/models/device_timer.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConfigService {
   static const String _backupFileName = 'auto_backup.json';
   static const String _backupDirName = 'backups';
+  static const String _encryptKey = 'SHomeBackup2026!';
 
-  // ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  // ШИФРОВАНИЕ
+  // ═══════════════════════════════════════════════════════
+
+  /// Шифрует строку (XOR + Base64).
+  static String encrypt(String text) {
+    final key = utf8.encode(_encryptKey);
+    final data = utf8.encode(text);
+    final result = <int>[];
+    for (var i = 0; i < data.length; i++) {
+      result.add(data[i] ^ key[i % key.length]);
+    }
+    return base64Encode(result);
+  }
+
+  /// Дешифрует строку (Base64 + XOR).
+  static String decrypt(String encrypted) {
+    final key = utf8.encode(_encryptKey);
+    final data = base64Decode(encrypted);
+    final result = <int>[];
+    for (var i = 0; i < data.length; i++) {
+      result.add(data[i] ^ key[i % key.length]);
+    }
+    return utf8.decode(result);
+  }
+
+  // ═══════════════════════════════════════════════════════
   // ЭКСПОРТ
-  // ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
 
-  /// Экспорт: собирает JSON, сохраняет локальный бекап и открывает «Поделиться».
-  /// Пользователь сам выбирает куда отправить: облако, почта, Telegram.
+  /// Экспорт: собирает JSON, шифрует, сохраняет локально и шарит.
   static Future<void> exportConfig() async {
     final json = await buildConfigJson();
+    final encrypted = encrypt(json);
 
-    // 1. Сохраняем локальный бекап (для кнопки «Восстановить»)
-    await _saveLocalBackup(json);
+    await _saveLocalBackup(encrypted);
 
-    // 2. Сохраняем во временный файл для шаринга
     final dir = await getTemporaryDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${dir.path}/shome_backup_$timestamp.json');
-    await file.writeAsString(json);
+    final now = DateTime.now();
+    final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}'
+        '_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+    final file = File('${dir.path}/shome_backup_$dateStr.json');
+    await file.writeAsString(encrypted);
 
-    // 3. Открываем share sheet
     await Share.shareXFiles(
       [XFile(file.path)],
-      text: 'Резервная копия SHome',
+      text: 'Резервная копия SHome (зашифрована)',
     );
   }
 
-  // ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
   // ИМПОРТ
-  // ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
 
-  /// Импорт через FilePicker (пользователь может выбрать из Downloads, облака, почты).
+  /// Импорт через FilePicker. Поддерживает зашифрованные и обычные бекапы.
   static Future<void> importConfig() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -57,32 +86,43 @@ class ConfigService {
       allowMultiple: false,
     );
 
-    if (result == null || result.files.isEmpty) return; // пользователь отменил
+    if (result == null || result.files.isEmpty) return;
 
     final file = File(result.files.single.path!);
-    final json = await file.readAsString();
-    await restoreFromJson(json);
+    final encrypted = await file.readAsString();
 
-    // После успешного импорта обновляем локальный бекап
-    await _saveLocalBackup(json);
+    String json;
+    try {
+      json = decrypt(encrypted);
+    } catch (_) {
+      json = encrypted; // старый формат без шифрования
+    }
+
+    await restoreFromJson(json);
+    await _saveLocalBackup(encrypted);
   }
 
-  /// Быстрый импорт из локального бекапа (кнопка «Восстановить»).
+  /// Быстрый импорт из локального бекапа.
   static Future<void> quickImport() async {
-    final json = await _loadLocalBackup();
+    final encrypted = await _loadLocalBackup();
+    if (encrypted == null) {
+      throw Exception('Локальный бекап не найден.');
+    }
 
-    if (json == null) {
-      throw Exception('Локальный бекап не найден. Сделайте импорт из облака.');
+    String json;
+    try {
+      json = decrypt(encrypted);
+    } catch (_) {
+      json = encrypted;
     }
 
     await restoreFromJson(json);
   }
 
-  // ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
   // ЛОКАЛЬНЫЙ АВТОБЕКАП
-  // ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
 
-  /// Директория для хранения бекапов
   static Future<Directory> get _backupDir async {
     final appDir = await getApplicationDocumentsDirectory();
     final backupDir = Directory('${appDir.path}/$_backupDirName');
@@ -92,26 +132,22 @@ class ConfigService {
     return backupDir;
   }
 
-  /// Сохраняет JSON локально (автобекап)
-  static Future<void> _saveLocalBackup(String json) async {
+  static Future<void> _saveLocalBackup(String encrypted) async {
     try {
       final dir = await _backupDir;
       final file = File('${dir.path}/$_backupFileName');
-      await file.writeAsString(json);
+      await file.writeAsString(encrypted);
       debugPrint('✅ Локальный бекап сохранён');
     } catch (e) {
       debugPrint('❌ Ошибка сохранения локального бекапа: $e');
     }
   }
 
-  /// Загружает локальный бекап. Возвращает null, если файла нет.
   static Future<String?> _loadLocalBackup() async {
     try {
       final dir = await _backupDir;
       final file = File('${dir.path}/$_backupFileName');
-
       if (!await file.exists()) return null;
-
       return await file.readAsString();
     } catch (e) {
       debugPrint('❌ Ошибка загрузки локального бекапа: $e');
@@ -119,7 +155,6 @@ class ConfigService {
     }
   }
 
-  /// Есть ли локальный бекап? (для UI)
   static Future<bool> hasLocalBackup() async {
     try {
       final dir = await _backupDir;
@@ -130,7 +165,6 @@ class ConfigService {
     }
   }
 
-  /// Дата последнего бекапа (для UI)
   static Future<DateTime?> lastBackupDate() async {
     try {
       final dir = await _backupDir;
@@ -142,17 +176,19 @@ class ConfigService {
     }
   }
 
-  /// Автобекап с ротацией (сохраняет последние 3 копии)
+  /// Автобекап с ротацией (3 последние копии).
   static Future<void> autoBackup() async {
     try {
       final json = await buildConfigJson();
+      final encrypted = encrypt(json);
       final dir = await _backupDir;
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final newBackup = File('${dir.path}/backup_$timestamp.json');
-      await newBackup.writeAsString(json);
+      final now = DateTime.now();
+      final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}'
+          '_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final newBackup = File('${dir.path}/backup_$dateStr.json');
+      await newBackup.writeAsString(encrypted);
 
-      // Ротация: оставляем только 3 последних
       final files = await dir.list().toList();
       final backups = files
           .whereType<File>()
@@ -166,29 +202,38 @@ class ConfigService {
         }
       }
 
-      // Обновляем основной auto_backup.json
-      await _saveLocalBackup(json);
-
+      await _saveLocalBackup(encrypted);
       debugPrint('✅ Автобекап выполнен (${backups.length} копий)');
     } catch (e) {
       debugPrint('❌ Ошибка автобекапа: $e');
     }
   }
 
-  // ────────────────────────────────────────────────────────
-  // СБОРКА / ВОССТАНОВЛЕНИЕ JSON
-  // ────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  // СБОРКА JSON
+  // ═══════════════════════════════════════════════════════
 
-  /// Собирает все данные из БД в JSON-строку.
-  /// Публичный — используется CloudSettingsScreen для загрузки в облако.
+  /// Собирает все данные в JSON-строку.
   static Future<String> buildConfigJson() async {
     final devices = await AppDatabase.getAllDevices();
     final rooms = await AppDatabase.getAllRooms();
     final scenes = await AppDatabase.getAllScenes();
     final timers = await AppDatabase.getActiveTimers();
 
+    final prefs = await SharedPreferences.getInstance();
+    final mqttBroker = prefs.getString('mqtt_broker') ?? '';
+    final mqttPort = prefs.getString('mqtt_port') ?? '1883';
+    final vkToken = prefs.getString('vk_token') ?? '';
+
+    const storage = FlutterSecureStorage();
+    final cloudLogin = await storage.read(key: 'mailru_login') ?? '';
+    final cloudPassword = await storage.read(key: 'mailru_password') ?? '';
+
+    final encryptedVkToken = vkToken.isNotEmpty ? encrypt(vkToken) : '';
+    final encryptedCloudPassword = cloudPassword.isNotEmpty ? encrypt(cloudPassword) : '';
+
     final config = {
-      'version': '2.11',
+      'version': '3.0',
       'exported_at': DateTime.now().toIso8601String(),
       'devices': devices.map((d) => d.toMap()).toList(),
       'rooms': rooms.map((r) => r.toMap()).toList(),
@@ -201,45 +246,111 @@ class ConfigService {
         'executeAt': t.executeAt.toIso8601String(),
         'executed': t.executed,
       }).toList(),
+      'settings': {
+        'mqtt_broker': mqttBroker,
+        'mqtt_port': mqttPort,
+        'cloud_login': cloudLogin,
+        'cloud_password_encrypted': encryptedCloudPassword,
+        'vk_token_encrypted': encryptedVkToken,
+      },
     };
 
     return const JsonEncoder.withIndent('  ').convert(config);
   }
 
+  // ═══════════════════════════════════════════════════════
+  // ВОССТАНОВЛЕНИЕ ИЗ JSON
+  // ═══════════════════════════════════════════════════════
+
   /// Восстанавливает все данные из JSON-строки.
-  /// Публичный — используется CloudSettingsScreen при скачивании из облака.
   static Future<void> restoreFromJson(String jsonString) async {
-    final config = jsonDecode(jsonString) as Map<String, dynamic>;
+    try {
+      final config = jsonDecode(jsonString) as Map<String, dynamic>;
 
-    if (config['rooms'] != null) {
-      for (final room in config['rooms']) {
-        await AppDatabase.insertRoom(RoomEntity.fromMap(room));
+      if (config['rooms'] != null) {
+        for (final room in (config['rooms'] as List)) {
+          if (room is Map<String, dynamic>) {
+            await AppDatabase.insertRoom(RoomEntity.fromMap(room));
+          }
+        }
       }
-    }
 
-    if (config['devices'] != null) {
-      for (final device in config['devices']) {
-        await AppDatabase.insertDevice(DeviceEntity.fromMap(device));
+      if (config['devices'] != null) {
+        for (final device in (config['devices'] as List)) {
+          if (device is Map<String, dynamic>) {
+            await AppDatabase.insertDevice(DeviceEntity.fromMap(device));
+          }
+        }
       }
-    }
 
-    if (config['scenes'] != null) {
-      for (final scene in config['scenes']) {
-        await AppDatabase.insertScene(SceneEntity.fromMap(scene));
+      if (config['scenes'] != null) {
+        for (final scene in (config['scenes'] as List)) {
+          if (scene is Map<String, dynamic>) {
+            await AppDatabase.insertScene(SceneEntity.fromMap(scene));
+          }
+        }
       }
-    }
 
-    if (config['timers'] != null) {
-      for (final timer in config['timers']) {
-        await AppDatabase.insertTimer(DeviceTimer(
-          id: timer['id'],
-          deviceId: timer['deviceId'],
-          deviceName: timer['deviceName'],
-          command: timer['command'],
-          executeAt: DateTime.parse(timer['executeAt']),
-          executed: timer['executed'] == true,
-        ));
+      if (config['timers'] != null) {
+        for (final timer in (config['timers'] as List)) {
+          if (timer is! Map<String, dynamic>) continue;
+
+          final id = timer['id']?.toString() ?? '';
+          final deviceId = timer['deviceId']?.toString() ?? '';
+          final deviceName = timer['deviceName']?.toString() ?? '';
+          final command = timer['command']?.toString() ?? '';
+          final executeAtStr = timer['executeAt']?.toString();
+          final executed = timer['executed'] == true;
+
+          if (id.isEmpty || executeAtStr == null) continue;
+
+          await AppDatabase.insertTimer(DeviceTimer(
+            id: id,
+            deviceId: deviceId,
+            deviceName: deviceName,
+            command: command,
+            executeAt: DateTime.parse(executeAtStr),
+            executed: executed,
+          ));
+        }
       }
+
+      if (config['settings'] != null && config['settings'] is Map) {
+        final settings = config['settings'] as Map<String, dynamic>;
+        final prefs = await SharedPreferences.getInstance();
+        const storage = FlutterSecureStorage();
+
+        final mqttBroker = settings['mqtt_broker']?.toString();
+        final mqttPort = settings['mqtt_port']?.toString();
+        if (mqttBroker != null && mqttBroker.isNotEmpty) {
+          await prefs.setString('mqtt_broker', mqttBroker);
+        }
+        if (mqttPort != null && mqttPort.isNotEmpty) {
+          await prefs.setString('mqtt_port', mqttPort);
+        }
+
+        final vkEnc = settings['vk_token_encrypted']?.toString();
+        if (vkEnc != null && vkEnc.isNotEmpty) {
+          try {
+            await prefs.setString('vk_token', decrypt(vkEnc));
+          } catch (_) {}
+        }
+
+        final cloudLogin = settings['cloud_login']?.toString();
+        final cloudPassEnc = settings['cloud_password_encrypted']?.toString();
+        if (cloudLogin != null && cloudLogin.isNotEmpty) {
+          await storage.write(key: 'mailru_login', value: cloudLogin);
+        }
+        if (cloudPassEnc != null && cloudPassEnc.isNotEmpty) {
+          try {
+            await storage.write(key: 'mailru_password', value: decrypt(cloudPassEnc));
+          } catch (_) {}
+        }
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Ошибка восстановления: $e');
+      debugPrint('StackTrace: $stackTrace');
+      rethrow;
     }
   }
 }
