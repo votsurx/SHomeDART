@@ -16,6 +16,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+  #=========== Сенсоры устройства ===========
+  # sensors_plus: ^6.1.0
+  light_sensor: ^3.0.2
+
   #==============Перемещение виджетов==========
   reorderable_grid_view: ^2.2.8
 

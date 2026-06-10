@@ -1,9 +1,8 @@
 /// Точка входа в приложение.
-/// Инициализирует DI (GetIt), запускает фоновые сервисы (TimerEngine, AutomationEngine).
-/// Создаёт комнаты по умолчанию при первом запуске.
-/// Запускает корневой виджет SHomeApp.
 library;
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'di/injection.dart';
 import 'domain/models/room.dart';
 import 'domain/repositories/room_repository.dart';
@@ -14,42 +13,23 @@ import 'data/services/mailru_cloud_service.dart';
 import 'app.dart';
 import 'domain/services/mqtt_service_interface.dart';
 import 'data/services/frigate_alarm_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'data/services/vk_notification_service.dart';
+import 'application/state/theme_provider.dart';
 
 void main() {
-  // Инициализация Flutter
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Регистрация всех зависимостей (GetIt)
   configureDependencies();
+  ThemeNotifier.updateAutoCache();
 
-  // Запуск фоновых сервисов
-  getIt<TimerEngine>().start();           // Движок отложенных команд
-  getIt<AutomationEngine>().start();      // Движок сцен по времени
+  getIt<TimerEngine>().start();
+  getIt<AutomationEngine>().start();
 
-  // Создание комнат по умолчанию (если БД пустая)
   _addDefaultRooms();
-
-  // Генерируем тестовые данные один раз
-  // TestDataGenerator.generateSensorData();
-
-  // MQTT + Frigate
-  final mqttService = getIt<MqttService>();
-  final frigateAlarmService = FrigateAlarmService(mqttService);
-  frigateAlarmService.onAlarm = (alarm) {
-    debugPrint('🚨 Тревога в UI: ${alarm.cameraId} - ${alarm.label}');
-  };
-
   _connectMqtt();
-  frigateAlarmService.start();
 
-  // Запуск приложения с Observer'ом для автобекапа
   runApp(const SHomeAppObserver(child: SHomeApp()));
 }
 
-/// Observer, который отслеживает жизненный цикл приложения
-/// и делает автобекап + облачную синхронизацию при сворачивании.
 class SHomeAppObserver extends StatefulWidget {
   final Widget child;
   const SHomeAppObserver({required this.child, super.key});
@@ -59,25 +39,46 @@ class SHomeAppObserver extends StatefulWidget {
 }
 
 class _SHomeAppObserverState extends State<SHomeAppObserver> with WidgetsBindingObserver {
+  Timer? _themeTimer;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _startAutoThemeTimer();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _themeTimer?.cancel();
     super.dispose();
+  }
+
+  void _startAutoThemeTimer() {
+    _themeTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkAutoTheme());
+    _checkAutoTheme();
+  }
+
+  void _checkAutoTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final auto = prefs.getBool('auto_theme') ?? false;
+    if (!auto) return;
+
+    final hour = DateTime.now().hour;
+    final newMode = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+
+    final currentMode = prefs.getString('theme_mode') ?? 'dark';
+    if (newMode != currentMode) {
+      await prefs.setString('theme_mode', newMode);
+      ThemeNotifier.updateAutoCache();
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      // Локальный автобекап
       ConfigService.autoBackup();
-
-      // Облачная синхронизация (если подключено и тумблер вкл)
       ConfigService.buildConfigJson().then((json) {
         MailruCloudService.autoSync(json);
       });
@@ -89,25 +90,20 @@ class _SHomeAppObserverState extends State<SHomeAppObserver> with WidgetsBinding
 }
 
 Future<void> _connectMqtt() async {
-  final prefs = await SharedPreferences.getInstance();
-  final broker = prefs.getString('mqtt_broker') ?? '192.168.1.100';
-  final port = int.tryParse(prefs.getString('mqtt_port') ?? '1883') ?? 1883;
-
   try {
+    final prefs = await SharedPreferences.getInstance();
+    final broker = prefs.getString('mqtt_broker') ?? '192.168.1.100';
+    final port = int.tryParse(prefs.getString('mqtt_port') ?? '1883') ?? 1883;
+
     final mqttService = getIt<MqttService>();
     await mqttService.connect(broker, port: port);
 
     final frigateService = FrigateAlarmService(mqttService);
     frigateService.onAlarm = (alarm) async {
       debugPrint('🚨 Тревога: ${alarm.cameraId} - ${alarm.label}');
-
       final vk = VkNotificationService();
       await vk.loadSettings();
-      await vk.sendAlarm(
-        cameraName: 'Камера ${alarm.cameraId}',
-        label: alarm.label,
-        score: alarm.score,
-      );
+      await vk.sendAlarm(cameraName: 'Камера ${alarm.cameraId}', label: alarm.label, score: alarm.score);
     };
     await frigateService.start();
 
@@ -117,14 +113,10 @@ Future<void> _connectMqtt() async {
   }
 }
 
-/// Добавляет 4 комнаты по умолчанию при первом запуске.
-/// Если в БД уже есть комнаты — ничего не делает.
 void _addDefaultRooms() async {
   await Future.delayed(const Duration(milliseconds: 100));
-
   final roomRepo = getIt<RoomRepository>();
   final rooms = await roomRepo.getAllRooms();
-
   if (rooms.isEmpty) {
     await roomRepo.saveRoom(Room(id: 'living', name: 'Гостиная', icon: '🛋️', sortOrder: 0));
     await roomRepo.saveRoom(Room(id: 'bedroom', name: 'Спальня', icon: '🛏️', sortOrder: 1));

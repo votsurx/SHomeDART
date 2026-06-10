@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../data/services/config_service.dart';
 import 'package:go_router/go_router.dart';
+import '../../data/services/config_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -95,14 +95,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  /// Показывает SimpleDialog с выбором действия над бекапом.
   void _showBackupDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => SimpleDialog(
         title: const Text('Резервное копирование'),
         children: [
-          // Экспорт
           SimpleDialogOption(
             onPressed: () {
               Navigator.pop(ctx);
@@ -115,7 +113,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               contentPadding: EdgeInsets.zero,
             ),
           ),
-          // Импорт
           SimpleDialogOption(
             onPressed: () {
               Navigator.pop(ctx);
@@ -128,7 +125,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               contentPadding: EdgeInsets.zero,
             ),
           ),
-          // Восстановить (только если есть локальный бекап)
           if (_hasBackup)
             SimpleDialogOption(
               onPressed: () {
@@ -165,10 +161,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   context: context,
                   builder: (ctx) => SimpleDialog(
                     title: const Text('Интервал опроса'),
-                    children: [2, 5, 10, 30].map((s) => SimpleDialogOption(
+                    children: [2, 5, 10, 30]
+                        .map((s) => SimpleDialogOption(
                       onPressed: () => Navigator.pop(ctx, s),
                       child: Text('$s секунд'),
-                    )).toList(),
+                    ))
+                        .toList(),
                   ),
                 );
                 if (!mounted) return;
@@ -197,9 +195,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () => _showBackupDialog(context),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
-          //Mqtt settings
+          // MQTT
           Card(
             child: ListTile(
               leading: const Icon(Icons.settings_input_antenna, color: Colors.teal),
@@ -208,8 +206,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () => context.push('/mqtt'),
             ),
           ),
+          const SizedBox(height: 12),
 
-          // VK настройки
+          // VK
           Card(
             child: ListTile(
               leading: const Icon(Icons.notifications, color: Colors.blue),
@@ -218,18 +217,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () => context.push('/vk'),
             ),
           ),
+          const SizedBox(height: 24),
 
           // О приложении
           Card(
             child: ListTile(
               leading: const Icon(Icons.info_outline, color: Colors.grey),
               title: const Text('О приложении'),
-              subtitle: const Text('SHome v2.13'),
+              subtitle: const Text('SHome v3.0'),
               onTap: () {
                 showAboutDialog(
                   context: context,
                   applicationName: 'SHome',
-                  applicationVersion: '2.13.0',
+                  applicationVersion: '3.0.0',
                   applicationLegalese: '© 2026 SHome Team',
                 );
               },
