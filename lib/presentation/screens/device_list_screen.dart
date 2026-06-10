@@ -238,6 +238,20 @@ class _DeviceListScreenState extends ConsumerState<DeviceListScreen> {
       case DeviceType.light: return {'brightness': 255, 'isOn': false};
       case DeviceType.robotVacuum: return {
         'isOn': false,
+        'dps_map': {
+          '1': {'label': 'Уборка', 'type': 'bool', 'role': 'main'},
+          '3': {'label': 'На базу', 'type': 'bool', 'role': 'action'},
+          '8': {'label': 'Заряд', 'type': 'value', 'role': 'info', 'icon': 'battery'},
+          '5': {'label': 'Статус', 'type': 'enum', 'role': 'status'},
+          '4': {'label': 'Режим', 'type': 'enum', 'role': 'info'},
+          '6': {'label': 'Время уборки', 'type': 'value', 'role': 'info', 'icon': 'timer'},
+          '7': {'label': 'Площадь', 'type': 'value', 'role': 'info', 'icon': 'area'},
+          '9': {'label': 'Всасывание', 'type': 'enum', 'role': 'info'},
+          '10': {'label': 'Бак воды', 'type': 'enum', 'role': 'info'},
+          '25': {'label': 'Не беспокоить', 'type': 'bool', 'role': 'toggle'},
+          '26': {'label': 'Громкость', 'type': 'value', 'role': 'slider', 'min': 0, 'max': 100},
+          '104': {'label': 'Влажная уборка', 'type': 'bool', 'role': 'toggle'},
+        },
         'battery_percentage': 0,
         'clean_time': 0,
         'clean_area': 0,

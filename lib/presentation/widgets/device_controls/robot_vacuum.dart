@@ -9,64 +9,114 @@ class DeviceRobotVacuum extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final battery = device.properties['battery_percentage'] as int? ?? 0;
-    final status = device.properties['status'] as String? ?? 'unknown';
-    final cleanTime = device.properties['clean_time'] as int? ?? 0;
-    final cleanArea = device.properties['clean_area'] as int? ?? 0;
-    final suction = device.properties['suction'] as String? ?? 'normal';
-    final cistern = device.properties['cistern'] as String? ?? 'low';
-    final isCleaning = device.properties['isOn'] == true;
-    final dnd = device.properties['do_not_disturb'] == true;
-    final mop = device.properties['y_mop_104'] == true;
-    final volume = device.properties['volume_set'] as int? ?? 54;
+    final dpsMap = device.properties['dps_map'] as Map<String, dynamic>? ?? {};
     final isOnline = device.state != DeviceState.offline;
+
+    // Разделяем DPS по ролям
+    final mainDps = dpsMap.entries.where((e) => e.value['role'] == 'main').toList();
+    final actionDps = dpsMap.entries.where((e) => e.value['role'] == 'action').toList();
+    final toggleDps = dpsMap.entries.where((e) => e.value['role'] == 'toggle').toList();
+    final infoDps = dpsMap.entries.where((e) => e.value['role'] == 'info').toList();
+    final statusDps = dpsMap.entries.where((e) => e.value['role'] == 'status').toList();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Заряд + статус
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('🔋$battery%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          Text(_statusIcon(status), style: const TextStyle(fontSize: 12)),
-        ]),
-        const SizedBox(height: 4),
+        // Статус
+        if (statusDps.isNotEmpty)
+          Text(
+            _dpsValue(statusDps.first)?.toString() ?? '--',
+            style: const TextStyle(fontSize: 10),
+          ),
 
-        // Время + площадь
-        Text('⏱$cleanTime мин  📐$cleanArea м²', style: const TextStyle(fontSize: 9, color: Colors.grey)),
-        const SizedBox(height: 2),
+        // Инфо-строка
+        if (infoDps.isNotEmpty)
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 4,
+            runSpacing: 0,
+            children: infoDps.map((e) {
+              final icon = e.value['icon'] as String?;
+              final val = _dpsValue(e);
+              return Text(
+                '${_infoIcon(icon)}${val ?? "--"}',
+                style: const TextStyle(fontSize: 9, color: Colors.grey),
+              );
+            }).toList(),
+          ),
 
-        // Всасывание + вода
-        Text('🌀${_suctionShort(suction)} 💧${_cisternShort(cistern)}', style: const TextStyle(fontSize: 9, color: Colors.grey)),
-        const SizedBox(height: 6),
+        // Кнопки управления
+        if (mainDps.isNotEmpty || actionDps.isNotEmpty || toggleDps.isNotEmpty)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 140;
+              final allButtons = <Widget>[];
+              allButtons.addAll(mainDps.map((e) => _dpsButton(ref, context, isOnline, e)));
+              allButtons.addAll(actionDps.map((e) => _dpsButton(ref, context, isOnline, e)));
+              allButtons.addAll(toggleDps.map((e) => _dpsToggle(ref, context, isOnline, e)));
 
-    // Кнопки управления (в два ряда если узко)
-    LayoutBuilder(
-    builder: (context, constraints) {
-    final narrow = constraints.maxWidth < 150;
-    final buttons = [
-    _btn(ref, context, isOnline, isCleaning ? Icons.stop : Icons.play_arrow,
-    isCleaning ? Colors.red : Colors.green, () => _toggleCleaning(ref)),
-    _btn(ref, context, isOnline, Icons.home, Colors.blue, () => _goHome(ref)),
-    _btn(ref, context, isOnline, dnd ? Icons.do_not_disturb_on : Icons.do_not_disturb,
-    dnd ? Colors.orange : Colors.grey, () {}),
-    _btn(ref, context, isOnline, mop ? Icons.water_drop : Icons.water_drop_outlined,
-    mop ? Colors.blue : Colors.grey, () {}),
-    ];
+              if (narrow) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < allButtons.length; i += 2)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            allButtons[i],
+                            if (i + 1 < allButtons.length) const SizedBox(width: 2),
+                            if (i + 1 < allButtons.length) allButtons[i + 1],
+                          ],
+                        ),
+                      ),
+                  ],
+                );
+              }
 
-    if (narrow) {
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-    Row(mainAxisAlignment: MainAxisAlignment.center, children: buttons.sublist(0, 2).map((b) => Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: b)).toList()),
-    const SizedBox(height: 4),
-    Row(mainAxisAlignment: MainAxisAlignment.center, children: buttons.sublist(2, 4).map((b) => Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: b)).toList()),
-    ]);
-    }
-
-    return Row(mainAxisAlignment: MainAxisAlignment.center, children: buttons.map((b) => Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: b)).toList());
-    },
-    ),
+              return Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 2,
+                runSpacing: 2,
+                children: allButtons,
+              );
+            },
+          ),
       ],
     );
+  }
+
+  dynamic _dpsValue(MapEntry<String, dynamic> entry) {
+    final key = 'dps_${entry.key}';
+    return device.properties[key];
+  }
+
+  Widget _dpsButton(WidgetRef ref, BuildContext ctx, bool online, MapEntry<String, dynamic> entry) {
+    final label = entry.value['label'] as String? ?? '';
+    final isOn = _dpsValue(entry) == true || _dpsValue(entry) == 1;
+    final icon = _actionIcon(label, isOn);
+    final color = isOn ? Colors.green : Colors.grey;
+
+    return _btn(ref, ctx, online, icon, color, () {
+      final dpsKey = int.tryParse(entry.key) ?? 1;
+      if (isOn) {
+        ref.read(devicesProvider.notifier).turnOff(device.id);
+      } else {
+        ref.read(devicesProvider.notifier).turnOn(device.id);
+      }
+    });
+  }
+
+  Widget _dpsToggle(WidgetRef ref, BuildContext ctx, bool online, MapEntry<String, dynamic> entry) {
+    final label = entry.value['label'] as String? ?? '';
+    final isOn = _dpsValue(entry) == true || _dpsValue(entry) == 1;
+    final icon = _toggleIcon(label);
+    final color = isOn ? Colors.blue : Colors.grey;
+
+    return _btn(ref, ctx, online, icon, color, () {
+      // Отправляем DPS
+    });
   }
 
   Widget _btn(WidgetRef ref, BuildContext ctx, bool online, IconData icon, Color color, VoidCallback onTap) {
@@ -81,7 +131,7 @@ class DeviceRobotVacuum extends ConsumerWidget {
         onTap();
       },
       child: Container(
-        width: 30, height: 30,
+        width: 26, height: 26,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: color.withValues(alpha: 0.15),
@@ -91,43 +141,24 @@ class DeviceRobotVacuum extends ConsumerWidget {
     );
   }
 
-  void _toggleCleaning(WidgetRef ref) {
-    final isOn = device.properties['isOn'] == true;
-    if (isOn) {
-      ref.read(devicesProvider.notifier).turnOff(device.id);
-    } else {
-      ref.read(devicesProvider.notifier).turnOn(device.id);
-    }
+  IconData _actionIcon(String label, bool isOn) {
+    if (label.contains('Уборка')) return isOn ? Icons.stop : Icons.play_arrow;
+    if (label.contains('базу') || label.contains('Базу')) return Icons.home;
+    return Icons.circle;
   }
 
-  void _goHome(WidgetRef ref) {
-    ref.read(devicesProvider.notifier).turnOn(device.id);
+  IconData _toggleIcon(String label) {
+    if (label.contains('беспокоить')) return Icons.do_not_disturb;
+    if (label.contains('Влажная') || label.contains('Мытьё')) return Icons.water_drop;
+    return Icons.toggle_off;
   }
 
-  String _statusIcon(String s) {
-    switch (s) {
-      case 'charge_done': return '✅';
-      case 'cleaning': return '🧹';
-      case 'paused': return '⏸';
-      case 'charging': return '🔋';
-      default: return '📡';
-    }
-  }
-
-  String _suctionShort(String s) {
-    switch (s) {
-      case 'normal': return 'норм';
-      case 'turbo': return 'турбо';
-      case 'max': return 'макс';
-      default: return s;
-    }
-  }
-
-  String _cisternShort(String c) {
-    switch (c) {
-      case 'low': return 'мало';
-      case 'full': return 'полн';
-      default: return c;
+  String _infoIcon(String? icon) {
+    switch (icon) {
+      case 'battery': return '🔋';
+      case 'timer': return '⏱';
+      case 'area': return '📐';
+      default: return '';
     }
   }
 }

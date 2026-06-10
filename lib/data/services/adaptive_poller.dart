@@ -96,49 +96,42 @@ class AdaptivePoller {
 
         final dps = result['dps'] as Map<String, dynamic>;
 
-        // --- Робот-пылесос ---
-        if (device.type == DeviceType.robotVacuum) {
+        // --- Составные устройства (dps_map) ---
+        final dpsMap = device.properties['dps_map'] as Map<String, dynamic>?;
+        if (dpsMap != null && dpsMap.isNotEmpty) {
           final newProperties = <String, dynamic>{...device.properties};
 
-          void readBool(dynamic key, String prop) {
-            final val = dps[key] ?? dps[key.toString()];
-            if (val != null) newProperties[prop] = val == true || val == 1;
-          }
-          void readInt(dynamic key, String prop) {
-            final val = dps[key] ?? dps[key.toString()];
-            if (val != null) newProperties[prop] = val is num ? val : int.tryParse(val.toString()) ?? 0;
-          }
-          void readString(dynamic key, String prop) {
-            final val = dps[key] ?? dps[key.toString()];
-            if (val != null) newProperties[prop] = val.toString();
-          }
+          dpsMap.forEach((key, config) {
+            final cfg = config as Map<String, dynamic>;
+            final type = cfg['type'] as String? ?? 'value';
+            final propKey = 'dps_$key';
 
-          readBool(1, 'isOn');
-          readBool(3, 'switch_charge');
-          readString(4, 'mode');
-          readString(5, 'status');
-          readInt(6, 'clean_time');
-          readInt(7, 'clean_area');
-          readInt(8, 'battery_percentage');
-          readString(9, 'suction');
-          readString(10, 'cistern');
-          readBool(25, 'do_not_disturb');
-          readInt(26, 'volume_set');
-          readBool(104, 'y_mop_104');
+            final raw = dps[int.tryParse(key)] ?? dps[key] ?? dps[key.toString()];
+
+            if (raw == null) return;
+
+            switch (type) {
+              case 'bool':
+                newProperties[propKey] = raw == true || raw == 1;
+                break;
+              case 'value':
+              case 'slider':
+                newProperties[propKey] = raw is num ? raw : int.tryParse(raw.toString()) ?? 0;
+                break;
+              case 'enum':
+                newProperties[propKey] = raw.toString();
+                break;
+            }
+          });
+
+          // Синхронизируем isOn с dps_1 если есть
+          if (newProperties.containsKey('dps_1')) {
+            newProperties['isOn'] = newProperties['dps_1'];
+          }
 
           final updated = device.copyWith(properties: newProperties);
           _updateDeviceInList(updated);
           onSensorUpdate?.call(device.id, newProperties);
-
-          // Проверяем изменение isOn
-          final realIsOn = newProperties['isOn'] == true;
-          final currentIsOn = device.properties['isOn'] == true;
-          if (realIsOn != currentIsOn) {
-            _onStateChanged(device.id, realIsOn);
-            try {
-              EventLogger.log(deviceId: device.id, deviceName: device.name, event: realIsOn ? 'turnOn' : 'turnOff');
-            } catch (_) {}
-          }
         }
 
         // --- Многоканальные устройства ---
