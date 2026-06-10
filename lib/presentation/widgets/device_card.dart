@@ -10,7 +10,7 @@ import 'device_controls/multi_switch.dart';
 import 'device_controls/sensor_info.dart';
 import 'device_controls/curtain_info.dart';
 import 'device_controls/camera_preview.dart';
-import 'device_controls/robot_vacuum.dart';
+import 'device_controls/compound.dart' show DeviceCompound;
 
 
 class DeviceCard extends ConsumerWidget {
@@ -71,8 +71,8 @@ class DeviceCard extends ConsumerWidget {
         return DeviceCurtainInfo(device: device);
       case DeviceType.camera:
         return DeviceCameraPreview(device: device);
-      case DeviceType.robotVacuum:
-        return DeviceRobotVacuum(device: device);
+      case DeviceType.compound:
+        return DeviceCompound(device: device);
       default:
         return DevicePowerButton(device: device);
     }

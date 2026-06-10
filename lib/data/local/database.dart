@@ -27,7 +27,7 @@ class AppDatabase {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         // Создание всех таблиц с нуля
         await db.execute('''
@@ -177,6 +177,10 @@ class AppDatabase {
               power REAL
             )
           ''');
+        }
+        // Миграция 8: переименование robotVacuum → compound
+        if (oldVersion < 8) {
+          await db.execute("UPDATE devices SET type = 'compound' WHERE type = 'robotVacuum'");
         }
       },
     );

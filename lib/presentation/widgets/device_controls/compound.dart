@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/device.dart';
 import '../../../application/state/devices_provider.dart';
 
-class DeviceRobotVacuum extends ConsumerWidget {
+class DeviceCompound extends ConsumerWidget {
   final Device device;
-  const DeviceRobotVacuum({super.key, required this.device});
+  const DeviceCompound({super.key, required this.device});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -95,11 +95,11 @@ class DeviceRobotVacuum extends ConsumerWidget {
   Widget _dpsButton(WidgetRef ref, BuildContext ctx, bool online, MapEntry<String, dynamic> entry) {
     final label = entry.value['label'] as String? ?? '';
     final isOn = _dpsValue(entry) == true || _dpsValue(entry) == 1;
-    final icon = _actionIcon(label, isOn);
+    final iconName = entry.value['icon'] as String? ?? '';
+    final icon = _getIconFromName(iconName, label, isOn);
     final color = isOn ? Colors.green : Colors.grey;
 
     return _btn(ref, ctx, online, icon, color, () {
-      final dpsKey = int.tryParse(entry.key) ?? 1;
       if (isOn) {
         ref.read(devicesProvider.notifier).turnOff(device.id);
       } else {
@@ -111,12 +111,40 @@ class DeviceRobotVacuum extends ConsumerWidget {
   Widget _dpsToggle(WidgetRef ref, BuildContext ctx, bool online, MapEntry<String, dynamic> entry) {
     final label = entry.value['label'] as String? ?? '';
     final isOn = _dpsValue(entry) == true || _dpsValue(entry) == 1;
-    final icon = _toggleIcon(label);
+    final iconName = entry.value['icon'] as String? ?? '';
+    final icon = _getIconFromName(iconName, label, isOn);
     final color = isOn ? Colors.blue : Colors.grey;
 
-    return _btn(ref, ctx, online, icon, color, () {
-      // Отправляем DPS
-    });
+    return _btn(ref, ctx, online, icon, color, () {});
+  }
+
+  IconData _getIconFromName(String? iconName, String label, bool isOn) {
+    if (iconName != null && iconName.isNotEmpty) {
+      switch (iconName) {
+        case 'play': return isOn ? Icons.stop : Icons.play_arrow;
+        case 'home': return Icons.home;
+        case 'power': return Icons.power_settings_new;
+        case 'water': return Icons.water_drop;
+        case 'mop': return Icons.cleaning_services;
+        case 'do_not_disturb': return Icons.do_not_disturb;
+        case 'battery': return isOn ? Icons.battery_full : Icons.battery_std;
+        case 'fan': return Icons.air;
+        case 'temp': return Icons.thermostat;
+        case 'ac': return Icons.ac_unit;
+        case 'heater': return Icons.local_fire_department;
+        case 'air': return Icons.air;
+        case 'suction': return Icons.storm;
+        case 'wait': return Icons.hourglass_empty;
+        case 'sync': return Icons.sync;
+        default: return Icons.circle;
+      }
+    }
+    // Fallback
+    if (label.contains('Уборка')) return isOn ? Icons.stop : Icons.play_arrow;
+    if (label.contains('базу') || label.contains('Базу')) return Icons.home;
+    if (label.contains('беспокоить')) return Icons.do_not_disturb;
+    if (label.contains('Влажная') || label.contains('Мытьё')) return Icons.water_drop;
+    return Icons.circle;
   }
 
   Widget _btn(WidgetRef ref, BuildContext ctx, bool online, IconData icon, Color color, VoidCallback onTap) {

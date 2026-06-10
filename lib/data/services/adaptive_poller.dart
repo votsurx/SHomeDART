@@ -162,8 +162,8 @@ class AdaptivePoller {
             _talker.info('Multi-channel state changed: $currentStates');
             _onStatesChanged(device.id, currentStates);
           }
-        } else if (device.type != DeviceType.robotVacuum) {
-          // --- Одноканальные устройства (кроме пылесоса) ---
+        } else if (device.type != DeviceType.compound) {
+          // --- Одноканальные устройства (кроме универсальных устройств) ---
           final dpsIndex = device.dpsIndex ?? 1;
           final rawValue = dps[dpsIndex] ?? dps[dpsIndex.toString()];
 

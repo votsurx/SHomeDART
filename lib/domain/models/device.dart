@@ -2,6 +2,7 @@
 /// Использует Freezed для иммутабельности, copyWith, JSON-сериализации.
 /// Поддерживает все типы устройств: розетки, выключатели, датчики, шторы, HVAC, лампы, камеры.
 /// Свойства (properties) — гибкий Map для хранения специфичных данных каждого типа.
+library;
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'device.freezed.dart';
@@ -66,7 +67,7 @@ enum DeviceType {
   light,      // Лампа (диммируемая)
   camera,     // Камера (RTSP)
   button,     // Zigbee кнопка
-  robotVacuum,// Robot пылесос
+  compound,   // универсальное составное устройство
 }
 
 /// Подтипы датчиков для DeviceType.sensor.

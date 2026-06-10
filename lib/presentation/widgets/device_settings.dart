@@ -1,3 +1,16 @@
+/// Настройки устройства — bottom sheet с полным набором полей.
+///
+/// Поддерживает все типы устройств:
+/// - Обычные (outlet, light) — стандартные поля Tuya + DPS индекс
+/// - Выключатели (switch1/2/3) — DPS для каждого канала
+/// - Камеры (camera) — без Tuya-полей, для RTSP — поле URL
+/// - Датчики (sensor) — без кнопки «Создать датчик»
+/// - Универсальное устройство — dps_map редактор, без DPS индекса
+///
+/// dps_map позволяет гибко настраивать составные устройства:
+/// каждый DPS имеет номер, название, тип, роль и иконку.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/device.dart';
@@ -5,8 +18,14 @@ import '../../application/state/devices_provider.dart';
 import '../../application/state/rooms_provider.dart';
 
 class DeviceSettings {
+  // ===================================================================
+  // ОСНОВНОЙ МЕТОД — открывает bottom sheet настроек устройства
+  // ===================================================================
+
   static void show(BuildContext context, WidgetRef ref, Device device) {
-    // ===================== КОНТРОЛЛЕРЫ =====================
+    // ──────────────────────────────────────────────────────────
+    // КОНТРОЛЛЕРЫ
+    // ──────────────────────────────────────────────────────────
     final nameController = TextEditingController(text: device.name);
     final rooms = ref.watch(roomsProvider);
     String selectedRoomId = device.roomId;
@@ -32,7 +51,9 @@ class DeviceSettings {
           (i) => TextEditingController(text: '${(device.dpsIndex ?? 1) + i}'),
     );
 
-    // ===================== BOTTOM SHEET =====================
+    // ──────────────────────────────────────────────────────────
+    // BOTTOM SHEET
+    // ──────────────────────────────────────────────────────────
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -48,9 +69,9 @@ class DeviceSettings {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ═══════════════════════════════════════════
-                // НАЗВАНИЕ (для всех устройств)
-                // ═══════════════════════════════════════════
+                // ╔══════════════════════════════════════════╗
+                // ║        НАЗВАНИЕ (для всех устройств)     ║
+                // ╚══════════════════════════════════════════╝
                 Text(device.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 TextField(
@@ -59,11 +80,11 @@ class DeviceSettings {
                 ),
                 const SizedBox(height: 8),
 
-                // ═══════════════════════════════════════════
-                // КОМНАТА (для всех устройств)
-                // ═══════════════════════════════════════════
+                // ╔══════════════════════════════════════════╗
+                // ║        КОМНАТА (для всех устройств)      ║
+                // ╚══════════════════════════════════════════╝
                 DropdownButtonFormField<String>(
-                  value: selectedRoomId,
+                  initialValue: selectedRoomId,
                   decoration: const InputDecoration(labelText: 'Комната', prefixIcon: Icon(Icons.meeting_room)),
                   items: rooms
                       .map((r) => DropdownMenuItem(
@@ -76,9 +97,9 @@ class DeviceSettings {
                   },
                 ),
 
-                // ═══════════════════════════════════════════
-                // RTSP URL (только для RTSP камер)
-                // ═══════════════════════════════════════════
+                // ╔══════════════════════════════════════════╗
+                // ║    RTSP URL (только для RTSP камер)      ║
+                // ╚══════════════════════════════════════════╝
                 if (device.type == DeviceType.camera && device.properties['cameraType'] == 'rtsp') ...[
                   const SizedBox(height: 8),
                   TextField(
@@ -87,9 +108,9 @@ class DeviceSettings {
                   ),
                 ],
 
-                // ═══════════════════════════════════════════
-                // СТАНДАРТНЫЕ ПОЛЯ TUYA (для всех кроме камер)
-                // ═══════════════════════════════════════════
+                // ╔══════════════════════════════════════════╗
+                // ║  СТАНДАРТНЫЕ ПОЛЯ TUYA (кроме камер)     ║
+                // ╚══════════════════════════════════════════╝
                 if (device.type != DeviceType.camera) ...[
                   const SizedBox(height: 8),
 
@@ -118,7 +139,8 @@ class DeviceSettings {
                   // Версия протокола Tuya
                   DropdownButtonFormField<double>(
                     initialValue: selectedVersion,
-                    decoration: const InputDecoration(labelText: 'Версия протокола', prefixIcon: Icon(Icons.info_outline)),
+                    decoration:
+                    const InputDecoration(labelText: 'Версия протокола', prefixIcon: Icon(Icons.info_outline)),
                     items: const [
                       DropdownMenuItem(value: 3.1, child: Text('3.1')),
                       DropdownMenuItem(value: 3.3, child: Text('3.3')),
@@ -131,11 +153,11 @@ class DeviceSettings {
                   ),
                 ],
 
-                // ═══════════════════════════════════════════
-                // DPS ИНДЕКСЫ (выключатели и обычные устройства)
-                // Скрыто для: камер, пылесосов (у них dps_map)
-                // ═══════════════════════════════════════════
-                if (device.type != DeviceType.camera && device.type != DeviceType.robotVacuum) ...[
+                // ╔══════════════════════════════════════════╗
+                // ║  DPS ИНДЕКСЫ (выключатели и обычные)     ║
+                // ║  Скрыто: камеры, пылесосы (dps_map)      ║
+                // ╚══════════════════════════════════════════╝
+                if (device.type != DeviceType.camera && device.type != DeviceType.compound) ...[
                   const SizedBox(height: 8),
                   if (device.type == DeviceType.switch1 ||
                       device.type == DeviceType.switch2 ||
@@ -157,22 +179,24 @@ class DeviceSettings {
                     // Одноканальные — один DPS индекс
                     TextField(
                       controller: dpsControllers.first,
-                      decoration: const InputDecoration(labelText: 'DPS Индекс', hintText: '1', prefixIcon: Icon(Icons.tune)),
+                      decoration: const InputDecoration(
+                          labelText: 'DPS Индекс', hintText: '1', prefixIcon: Icon(Icons.tune)),
                       keyboardType: TextInputType.number,
                     ),
                   ],
                 ],
 
-                // ═══════════════════════════════════════════
-                // DPS КАРТА (для робота-пылесоса)
-                // ═══════════════════════════════════════════
-                if (device.type == DeviceType.robotVacuum) ...[
+                // ╔══════════════════════════════════════════╗
+                // ║ DPS КАРТА (для универсального устройства)║
+                // ║   Редактор составных устройств           ║
+                // ╚══════════════════════════════════════════╝
+                if (device.type == DeviceType.compound) ...[
                   const SizedBox(height: 8),
                   Text('DPS карта:',
                       style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700], fontSize: 13)),
                   const SizedBox(height: 4),
-                  ..._buildDpsMapEditor(device, setModalState, context, ref),
-                  // Кнопка добавления DPS
+                  ..._buildDpsMapEditor(device, setModalState, ctx, ref),
+                  // Кнопка добавления нового DPS
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: () => _showDpsEditor(ctx, setModalState, device, null, ref),
@@ -184,9 +208,9 @@ class DeviceSettings {
                   ),
                 ],
 
-                // ═══════════════════════════════════════════
-                // КНОПКИ: СОХРАНИТЬ / УДАЛИТЬ
-                // ═══════════════════════════════════════════
+                // ╔══════════════════════════════════════════╗
+                // ║      КНОПКИ: СОХРАНИТЬ / УДАЛИТЬ         ║
+                // ╚══════════════════════════════════════════╝
                 const SizedBox(height: 16),
                 Row(children: [
                   Expanded(
@@ -209,7 +233,7 @@ class DeviceSettings {
                           localKey: device.type != DeviceType.camera && localKeyController.text.isNotEmpty
                               ? localKeyController.text
                               : device.localKey,
-                          dpsIndex: device.type != DeviceType.camera && device.type != DeviceType.robotVacuum
+                          dpsIndex: device.type != DeviceType.camera && device.type != DeviceType.compound
                               ? (int.tryParse(dpsControllers.first.text) ?? device.dpsIndex)
                               : device.dpsIndex,
                           version: device.type != DeviceType.camera ? selectedVersion : device.version,
@@ -252,12 +276,13 @@ class DeviceSettings {
                   ),
                 ]),
 
-                // ═══════════════════════════════════════════
-                // СОЗДАТЬ ДАТЧИК (только для НЕ-камер, НЕ-датчиков, НЕ-пылесосов)
-                // ═══════════════════════════════════════════
+                // ╔══════════════════════════════════════════╗
+                // ║  СОЗДАТЬ ДАТЧИК (не для камер/датчиков/  ║
+                // ║  универсальных устройств                 ║
+                // ╚══════════════════════════════════════════╝
                 if (device.type != DeviceType.sensor &&
                     device.type != DeviceType.camera &&
-                    device.type != DeviceType.robotVacuum) ...[
+                    device.type != DeviceType.compound) ...[
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -280,9 +305,12 @@ class DeviceSettings {
     );
   }
 
-  // ==================== DPS КАРТА РЕДАКТОР ====================
+  // ===================================================================
+  // DPS КАРТА — отображение списка DPS
+  // ===================================================================
 
-  /// Отображает список DPS из dps_map с иконками по ролям.
+  /// Отображает отсортированный список DPS из dps_map с иконками.
+  /// Каждый элемент можно нажать для редактирования.
   static List<Widget> _buildDpsMapEditor(
       Device device,
       void Function(VoidCallback) setModalState,
@@ -291,7 +319,7 @@ class DeviceSettings {
       ) {
     final dpsMap = Map<String, dynamic>.from(device.properties['dps_map'] as Map? ?? {});
 
-    // Сортируем ключи по числовому значению
+    // Сортируем ключи по числовому значению (1, 3, 4, 8...)
     final sortedKeys = dpsMap.keys.toList()
       ..sort((a, b) => (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0));
 
@@ -300,10 +328,11 @@ class DeviceSettings {
       final label = cfg['label'] as String? ?? '';
       final type = cfg['type'] as String? ?? '';
       final role = cfg['role'] as String? ?? '';
+      final iconName = cfg['icon'] as String? ?? '';
 
       return ListTile(
         dense: true,
-        leading: _dpsRoleIcon(role),
+        leading: _dpsIcon(role, iconName),
         title: Text('DPS $key: $label', style: const TextStyle(fontSize: 12)),
         subtitle: Text('$type / $role', style: const TextStyle(fontSize: 10)),
         trailing: const Icon(Icons.edit, size: 16),
@@ -315,7 +344,17 @@ class DeviceSettings {
     }).toList();
   }
 
-  /// Возвращает иконку в зависимости от роли DPS.
+  /// Возвращает иконку для DPS: сначала кастомная, затем по роли.
+  static Widget _dpsIcon(String role, String? iconName) {
+    // Если задана кастомная иконка — показываем эмодзи
+    if (iconName != null && iconName.isNotEmpty) {
+      return Text(_iconEmoji(iconName), style: const TextStyle(fontSize: 16));
+    }
+    // Иначе — иконка по роли
+    return _dpsRoleIcon(role);
+  }
+
+  /// Возвращает Material иконку по роли DPS.
   static Icon _dpsRoleIcon(String role) {
     switch (role) {
       case 'main':
@@ -334,21 +373,52 @@ class DeviceSettings {
         return const Icon(Icons.help_outline, size: 16);
     }
   }
-  /// Диалог добавления/редактирования одного DPS в dps_map.
+
+  /// Преобразует ключ иконки в эмодзи.
+  static String _iconEmoji(String key) {
+    switch (key) {
+      case 'battery': return '🔋';
+      case 'timer': return '⏱';
+      case 'area': return '📐';
+      case 'water': return '💧';
+      case 'fan': return '🌀';
+      case 'temp': return '🌡';
+      case 'home': return '🏠';
+      case 'power': return '⚡';
+      case 'mop': return '🧹';
+      case 'ac': return '❄️';
+      case 'heater': return '🔥';
+      case 'air': return '🍃';
+      case 'suction': return '🌪️';
+      case 'wait': return '⏳';
+      case 'sync': return '🔄';
+      default: return '📌';
+    }
+  }
+
+  // ===================================================================
+  // РЕДАКТОР ОДНОГО DPS (добавление / изменение)
+  // ===================================================================
+
+  /// Диалог добавления нового или редактирования существующего DPS.
+  /// dpsKey == null → создание нового DPS.
+  /// dpsKey != null → редактирование существующего.
   static void _showDpsEditor(
       BuildContext context,
       void Function(VoidCallback) setModalState,
       Device device,
-      String? dpsKey, // null = новый DPS
+      String? dpsKey,
       WidgetRef ref,
       ) {
     final isNew = dpsKey == null;
     final dpsMap = Map<String, dynamic>.from(device.properties['dps_map'] as Map? ?? {});
 
+    // Контроллеры с текущими значениями
     final keyController = TextEditingController(text: dpsKey ?? '');
     final labelController = TextEditingController(text: isNew ? '' : dpsMap[dpsKey]?['label'] ?? '');
     String selectedType = isNew ? 'bool' : dpsMap[dpsKey]?['type'] ?? 'bool';
     String selectedRole = isNew ? 'action' : dpsMap[dpsKey]?['role'] ?? 'action';
+    String selectedIcon = isNew ? '' : dpsMap[dpsKey]?['icon'] ?? '';
 
     showDialog(
       context: context,
@@ -357,20 +427,24 @@ class DeviceSettings {
           title: Text(isNew ? 'Добавить DPS' : 'Редактировать DPS $dpsKey'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
+              // Номер DPS (всегда редактируемый)
               TextField(
                 controller: keyController,
                 decoration: const InputDecoration(labelText: 'Номер DPS'),
                 keyboardType: TextInputType.number,
-                enabled: true, // всегда можно редактировать
               ),
               const SizedBox(height: 8),
+
+              // Название
               TextField(
                 controller: labelController,
                 decoration: const InputDecoration(labelText: 'Название'),
               ),
               const SizedBox(height: 8),
+
+              // Тип значения
               DropdownButtonFormField<String>(
-                value: selectedType,
+                initialValue: selectedType,
                 decoration: const InputDecoration(labelText: 'Тип'),
                 items: const [
                   DropdownMenuItem(value: 'bool', child: Text('bool (вкл/выкл)')),
@@ -383,8 +457,10 @@ class DeviceSettings {
                 },
               ),
               const SizedBox(height: 8),
+
+              // Роль (определяет отображение в виджете)
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 decoration: const InputDecoration(labelText: 'Роль'),
                 items: const [
                   DropdownMenuItem(value: 'main', child: Text('main (главная кнопка)')),
@@ -398,14 +474,43 @@ class DeviceSettings {
                   if (v != null) setDialogState(() => selectedRole = v);
                 },
               ),
+              const SizedBox(height: 8),
+
+              // Иконка (эмодзи)
+              DropdownButtonFormField<String>(
+                initialValue: selectedIcon.isEmpty ? null : selectedIcon,
+                decoration: const InputDecoration(labelText: 'Иконка'),
+                items: const [
+                  DropdownMenuItem(value: '', child: Text('Без иконки')),
+                  DropdownMenuItem(value: 'play', child: Text('▶/⏹ Пуск/Стоп')),
+                  DropdownMenuItem(value: 'home', child: Text('🏠 Дом/База')),
+                  DropdownMenuItem(value: 'power', child: Text('⚡ Питание')),
+                  DropdownMenuItem(value: 'water', child: Text('💧 Вода')),
+                  DropdownMenuItem(value: 'mop', child: Text('🧹 Мытьё')),
+                  DropdownMenuItem(value: 'do_not_disturb', child: Text('🔕 Не беспокоить')),
+                  DropdownMenuItem(value: 'battery', child: Text('🔋 Батарея')),
+                  DropdownMenuItem(value: 'timer', child: Text('⏱ Таймер')),
+                  DropdownMenuItem(value: 'area', child: Text('📐 Площадь')),
+                  DropdownMenuItem(value: 'fan', child: Text('🌀 Вентилятор')),
+                  DropdownMenuItem(value: 'temp', child: Text('🌡 Температура')),
+                  DropdownMenuItem(value: 'ac', child: Text('❄️ Кондиционер')),
+                  DropdownMenuItem(value: 'heater', child: Text('🔥 Обогреватель')),
+                  DropdownMenuItem(value: 'air', child: Text('🍃 Воздух')),
+                  DropdownMenuItem(value: 'suction', child: Text('🌪️ Всасывание')),
+                  DropdownMenuItem(value: 'wait', child: Text('⏳ Ожидание')),
+                  DropdownMenuItem(value: 'sync', child: Text('🔄 Синхронизация')),
+                ],
+                onChanged: (v) => setDialogState(() => selectedIcon = v ?? ''),
+              ),
             ]),
           ),
           actions: [
+            // Кнопка «Удалить» (только для существующих DPS)
             if (!isNew)
               TextButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _deleteDps(device, dpsKey!, ref);
+                  _deleteDps(device, dpsKey, ref);
                 },
                 child: const Text('Удалить', style: TextStyle(color: Colors.red)),
               ),
@@ -422,10 +527,12 @@ class DeviceSettings {
                   newDpsMap.remove(dpsKey);
                 }
 
+                // Сохраняем конфигурацию DPS
                 newDpsMap[newKey] = {
                   'label': labelController.text,
                   'type': selectedType,
                   'role': selectedRole,
+                  if (selectedIcon.isNotEmpty) 'icon': selectedIcon,
                 };
 
                 final updated = device.copyWith(
@@ -458,8 +565,12 @@ class DeviceSettings {
     ref.read(devicesProvider.notifier).updateDevice(updated);
   }
 
-  // ==================== СОЗДАТЬ ДАТЧИК ====================
+  // ===================================================================
+  // СОЗДАТЬ ДАТЧИК
+  // ===================================================================
 
+  /// Диалог создания датчика из текущего устройства.
+  /// Копирует deviceId, localKey, address, version от родительского устройства.
   static void _showCreateSensorDialog(BuildContext context, WidgetRef ref, Device device) {
     SensorType selectedSensorType = SensorType.temperature;
     final dpsController = TextEditingController(text: '21');
@@ -475,6 +586,7 @@ class DeviceSettings {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Text('Из устройства: ${device.name}'),
               const SizedBox(height: 12),
+              // Тип датчика
               DropdownButtonFormField<SensorType>(
                 initialValue: selectedSensorType,
                 decoration: const InputDecoration(labelText: 'Тип датчика'),
