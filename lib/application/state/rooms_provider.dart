@@ -22,6 +22,10 @@ class RoomsNotifier extends StateNotifier<List<Room>> {
   RoomsNotifier() : super([]) {
     _loadRooms();
   }
+  Future<void> updateRoom(Room room) async {
+    await _repository.saveRoom(room);
+    state = state.map((r) => r.id == room.id ? room : r).toList();
+  }
 
   /// Загружает все комнаты из БД
   Future<void> _loadRooms() async {

@@ -55,23 +55,60 @@ class RoomsManageScreen extends ConsumerWidget {
   /// Диалог добавления новой комнаты.
   void _showAddRoomDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
+    String selectedIcon = '🏠';
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Добавить комнату'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Название', hintText: 'Гостиная'), autofocus: true),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                ref.read(roomsProvider.notifier).addRoom(Room(id: const Uuid().v4(), name: controller.text, sortOrder: ref.read(roomsProvider).length));
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Добавить'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Добавить комнату'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(labelText: 'Название', hintText: 'Гостиная'),
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedIcon,
+                decoration: const InputDecoration(labelText: 'Иконка'),
+                items: const [
+                  DropdownMenuItem(value: '🛋️', child: Text('🛋️ Гостиная')),
+                  DropdownMenuItem(value: '🛏️', child: Text('🛏️ Спальня')),
+                  DropdownMenuItem(value: '🍳', child: Text('🍳 Кухня')),
+                  DropdownMenuItem(value: '🚿', child: Text('🚿 Ванная')),
+                  DropdownMenuItem(value: '🚗', child: Text('🚗 Гараж')),
+                  DropdownMenuItem(value: '🌳', child: Text('🌳 Двор')),
+                  DropdownMenuItem(value: '👶', child: Text('👶 Детская')),
+                  DropdownMenuItem(value: '📦', child: Text('📦 Кладовая')),
+                  DropdownMenuItem(value: '💻', child: Text('💻 Кабинет')),
+                  DropdownMenuItem(value: '🏠', child: Text('🏠 Дом')),
+                  DropdownMenuItem(value: '🔌', child: Text('🔌 Техника')),
+                ],
+                onChanged: (v) => setDialogState(() => selectedIcon = v ?? '🏠'),
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+            ElevatedButton(
+              onPressed: () {
+                if (controller.text.isNotEmpty) {
+                  ref.read(roomsProvider.notifier).addRoom(Room(
+                    id: const Uuid().v4(),
+                    name: controller.text,
+                    icon: selectedIcon,
+                    sortOrder: ref.read(roomsProvider).length,
+                  ));
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Добавить'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -79,23 +116,58 @@ class RoomsManageScreen extends ConsumerWidget {
   /// Диалог переименования комнаты.
   void _showRenameDialog(BuildContext context, WidgetRef ref, Room room) {
     final controller = TextEditingController(text: room.name);
+    String selectedIcon = room.icon ?? '🏠';
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Переименовать'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Название'), autofocus: true),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                ref.read(roomsProvider.notifier).renameRoom(room.id, controller.text);
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Сохранить'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Редактировать'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(labelText: 'Название'),
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedIcon,
+                decoration: const InputDecoration(labelText: 'Иконка'),
+                items: const [
+                  DropdownMenuItem(value: '🛋️', child: Text('🛋️ Гостиная')),
+                  DropdownMenuItem(value: '🛏️', child: Text('🛏️ Спальня')),
+                  DropdownMenuItem(value: '🍳', child: Text('🍳 Кухня')),
+                  DropdownMenuItem(value: '🚿', child: Text('🚿 Ванная')),
+                  DropdownMenuItem(value: '🚗', child: Text('🚗 Гараж')),
+                  DropdownMenuItem(value: '🌳', child: Text('🌳 Двор')),
+                  DropdownMenuItem(value: '👶', child: Text('👶 Детская')),
+                  DropdownMenuItem(value: '📦', child: Text('📦 Кладовая')),
+                  DropdownMenuItem(value: '💻', child: Text('💻 Кабинет')),
+                  DropdownMenuItem(value: '🏠', child: Text('🏠 Дом')),
+                  DropdownMenuItem(value: '🔌', child: Text('🔌 Техника')),
+                ],
+                onChanged: (v) => setDialogState(() => selectedIcon = v ?? '🏠'),
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+            ElevatedButton(
+              onPressed: () {
+                if (controller.text.isNotEmpty) {
+                  ref.read(roomsProvider.notifier).renameRoom(room.id, controller.text);
+                  // Обновляем иконку через update
+                  final updated = room.copyWith(name: controller.text, icon: selectedIcon);
+                  ref.read(roomsProvider.notifier).updateRoom(updated);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Сохранить'),
+            ),
+          ],
+        ),
       ),
     );
   }

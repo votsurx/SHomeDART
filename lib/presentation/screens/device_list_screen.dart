@@ -304,66 +304,119 @@ class _TimeWeatherWidgetState extends State<_TimeWeatherWidget> {
 
   Future<void> _fetchWeather() async {
     try {
-      final lat = 54.53; // ← Калуга. Замени на свой город!
-      final lon = 36.27;
-
-      final url = Uri.parse(
-        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code',
-      );
-
+      final url = Uri.parse('https://wttr.in/54.53,36.27?format=%t|%C&lang=en');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final temp = data['current']['temperature_2m'];
-        final code = data['current']['weather_code'];
+        final parts = response.body.split('|');
+        if (parts.length == 2) {
+          final tempStr = parts[0].trim().replaceAll('+', '').replaceAll('°C', '');
+          final emoji = _weatherEmoji(parts[1].trim());
 
-        if (!mounted) return;
-        setState(() {
-          _temperature = '${temp.round()}°';
-          _weatherIcon = _weatherCodeToEmoji(code);
-        });
+          if (!mounted) return;
+          setState(() {
+            _temperature = '$tempStr°';
+            _weatherIcon = emoji;
+          });
+        }
       }
     } catch (e) {
-      // Оставляем заглушку при ошибке
       debugPrint('Weather fetch error: $e');
     }
 
-    // Обновляем погоду каждые 30 минут
     if (mounted) {
       Future.delayed(const Duration(minutes: 30), _fetchWeather);
     }
   }
 
-  String _weatherCodeToEmoji(int code) {
-    if (code == 0) return '☀️';       // Clear sky
-    if (code <= 3) return '🌤️';      // Partly cloudy
-    if (code <= 48) return '☁️';      // Cloudy / Fog
-    if (code <= 57) return '🌧️';      // Drizzle
-    if (code <= 67) return '🌧️';      // Rain
-    if (code <= 77) return '❄️';      // Snow
-    if (code <= 82) return '🌧️';      // Rain showers
-    if (code <= 86) return '❄️';      // Snow showers
-    if (code >= 95) return '⛈️';      // Thunderstorm
-    return '🌡️';                      // Unknown
+  String _weatherEmoji(String condition) {
+    if (condition.contains('Sunny') || condition.contains('Clear')) return '☀️';
+    if (condition.contains('cloud')) return '☁️';
+    if (condition.contains('rain') || condition.contains('drizzle')) return '🌧️';
+    if (condition.contains('snow')) return '❄️';
+    if (condition.contains('thunder')) return '⛈️';
+    if (condition.contains('fog') || condition.contains('mist')) return '🌫️';
+    return '🌡️';
+  }
+
+  void _showForecast(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🌤️ Прогноз погоды'),
+        content: FutureBuilder(
+          future: _fetchForecast(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const SizedBox(
+                height: 100,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final days = snapshot.data as List<Map<String, String>>;
+            return SizedBox(
+              width: double.maxFinite,
+              height: 250,  // фиксированная высота для скролла
+              child: ListView.builder(
+                itemCount: days.length,
+                itemBuilder: (context, index) {
+                  final day = days[index];
+                  return ListTile(
+                    leading: Text(day['icon']!, style: const TextStyle(fontSize: 24)),
+                    title: Text(day['date']!),
+                    trailing: Text(day['temp']!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+      ),
+    );
+  }
+
+  Future<List<Map<String, String>>> _fetchForecast() async {
+    final url = Uri.parse('https://wttr.in/Kaluga,Russia?format=j1&lang=ru');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final days = <Map<String, String>>[];
+
+      for (final day in data['weather'] ?? []) {
+        final date = day['date'] as String;
+        final maxTemp = day['maxtempC']?.toString() ?? '--';
+        final minTemp = day['mintempC']?.toString() ?? '--';
+        final emoji = _weatherEmoji(day['hourly']?[4]?['weatherDesc']?[0]?['value'] ?? '');
+
+        days.add({
+          'date': date,
+          'temp': '$minTemp° / $maxTemp°',
+          'icon': emoji,
+        });
+      }
+      return days;
+    }
+    return [];
   }
 
   @override
   Widget build(BuildContext context) {
-    final timeStr =
-        '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
+    final timeStr = '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(timeStr,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-        const SizedBox(width: 8),
-        Text(_weatherIcon, style: const TextStyle(fontSize: 18)),
-        const SizedBox(width: 4),
-        Text(_temperature,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-      ],
+    return GestureDetector(
+      onTap: () => _showForecast(context),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(timeStr, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+          const SizedBox(width: 8),
+          Text(_weatherIcon, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 4),
+          Text(_temperature, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        ],
+      ),
     );
   }
 }
