@@ -1,0 +1,220 @@
+/// Точка входа в приложение.
+library;
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:talker/talker.dart';
+import 'data/services/nvr_api_client.dart';
+import 'di/injection.dart';
+import 'domain/models/room.dart';
+import 'domain/repositories/device_repository.dart';
+import 'domain/repositories/room_repository.dart';
+import 'data/services/automation_engine.dart';
+import 'data/services/timer_engine.dart';
+import 'data/services/config_service.dart';
+import 'data/services/mailru_cloud_service.dart';
+import 'app.dart';
+import 'domain/services/mqtt_service_interface.dart';
+import 'data/services/mqtt_bridge.dart';
+import 'data/services/nvr_sync_service.dart';
+import 'application/state/theme_provider.dart';
+import 'application/state/nvr_provider.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  configureDependencies();
+  ThemeNotifier.updateAutoCache();
+
+  // Запускаем движки
+  getIt<TimerEngine>().start();
+  getIt<AutomationEngine>().start();
+
+  // Создаём дефолтные комнаты
+  _addDefaultRooms();
+
+  runApp(
+    const ProviderScope(
+      child: SHomeAppObserver(child: SHomeApp()),
+    ),
+  );
+}
+
+class SHomeAppObserver extends StatefulWidget {
+  final Widget child;
+  const SHomeAppObserver({required this.child, super.key});
+
+  @override
+  State<SHomeAppObserver> createState() => _SHomeAppObserverState();
+}
+
+class _SHomeAppObserverState extends State<SHomeAppObserver> with WidgetsBindingObserver {
+  Timer? _themeTimer;
+  Timer? _nvrSyncTimer;
+  MqttBridge? _mqttBridge;
+  // ❌ УДАЛЯЕМ: NvrSyncService? _nvrSyncService;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startAutoThemeTimer();
+    _initNvrServices();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _themeTimer?.cancel();
+    _nvrSyncTimer?.cancel();
+    _mqttBridge?.stop();
+    super.dispose();
+  }
+
+  // ============================================================
+  // 🎨 АВТО-ТЕМА
+  // ============================================================
+
+  void _startAutoThemeTimer() {
+    _themeTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkAutoTheme());
+    _checkAutoTheme();
+  }
+
+  void _checkAutoTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final auto = prefs.getBool('auto_theme') ?? false;
+    if (!auto) return;
+
+    final hour = DateTime.now().hour;
+    final newMode = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+
+    final currentMode = prefs.getString('theme_mode') ?? 'dark';
+    if (newMode != currentMode) {
+      await prefs.setString('theme_mode', newMode);
+      ThemeNotifier.updateAutoCache();
+    }
+  }
+
+  // ============================================================
+  // 🖥️ NVR СЕРВИСЫ
+  // ============================================================
+
+  void _initNvrServices() {
+    // Инициализация после того, как виджет построен
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _connectMqttAndStartBridge();
+      _startNvrSync();
+    });
+  }
+
+  Future<void> _connectMqttAndStartBridge() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final broker = prefs.getString('mqtt_broker') ?? '127.0.0.1';
+      final port = int.tryParse(prefs.getString('mqtt_port') ?? '1883') ?? 1883;
+
+      final mqttService = getIt<MqttService>();
+      await mqttService.connect(broker, port: port);
+
+      // Запускаем MQTT Bridge для приёма тревог от LegionNVR
+      _mqttBridge = getIt<MqttBridge>();
+      await _mqttBridge!.start();
+
+      // Подписываемся на события
+      _mqttBridge!.onMotionEvent = (event) {
+        // TODO: обновить состояние камеры (hasMotion)
+        debugPrint('🔴 Motion: ${event.cameraName}');
+      };
+
+      _mqttBridge!.onStatusEvent = (cameraId, isOnline) {
+        // TODO: обновить isOnline
+        debugPrint('📡 Camera $cameraId: ${isOnline ? "ONLINE" : "OFFLINE"}');
+      };
+
+      debugPrint('✅ MQTT Bridge started for LegionNVR');
+    } catch (e) {
+      debugPrint('❌ MQTT init error: $e');
+    }
+  }
+
+  void _startNvrSync() {
+    // Запускаем синхронизацию камер с LegionNVR
+    _nvrSyncTimer = Timer.periodic(
+      const Duration(seconds: 30),
+          (_) => _syncNvrCameras(),
+    );
+    // Первая синхронизация через 2 секунды
+    Future.delayed(const Duration(seconds: 2), _syncNvrCameras);
+  }
+
+  Future<void> _syncNvrCameras() async {
+    try {
+      // Проверяем настройки NVR
+      final settings = await _getNvrSettings();
+      if (settings.host.isEmpty) return;
+
+      // Проверяем mounted перед использованием context
+      if (!mounted) return;
+
+      // ✅ Создаём клиент
+      final apiClient = NvrApiClient(
+        host: settings.host,
+        port: settings.port,
+      );
+
+      // ✅ Создаём сервис без Ref
+      final syncService = NvrSyncService(
+        deviceRepo: getIt<DeviceRepository>(),
+        talker: getIt<Talker>(),
+        apiClient: apiClient,
+      );
+
+      await syncService.sync();
+    } catch (e) {
+      debugPrint('❌ NVR sync error: $e');
+    }
+  }
+
+  Future<NvrSettings> _getNvrSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    return NvrSettings(
+      host: prefs.getString('nvr_host') ?? '192.168.1.100',
+      port: prefs.getInt('nvr_port') ?? 8080,
+    );
+  }
+
+  // ============================================================
+  // 🔄 ЖИЗНЕННЫЙ ЦИКЛ ПРИЛОЖЕНИЯ
+  // ============================================================
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // Автобекап при сворачивании
+      ConfigService.autoBackup();
+      ConfigService.buildConfigJson().then((json) {
+        MailruCloudService.autoSync(json);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+// ============================================================
+// 🏠 ДЕФОЛТНЫЕ КОМНАТЫ
+// ============================================================
+
+void _addDefaultRooms() async {
+  await Future.delayed(const Duration(milliseconds: 100));
+  final roomRepo = getIt<RoomRepository>();
+  final rooms = await roomRepo.getAllRooms();
+  if (rooms.isEmpty) {
+    await roomRepo.saveRoom(Room(id: 'living', name: 'Гостиная', icon: '🛋️', sortOrder: 0));
+    await roomRepo.saveRoom(Room(id: 'bedroom', name: 'Спальня', icon: '🛏️', sortOrder: 1));
+    await roomRepo.saveRoom(Room(id: 'kitchen', name: 'Кухня', icon: '🍳', sortOrder: 2));
+    await roomRepo.saveRoom(Room(id: 'other', name: 'Техника', icon: '🔌', sortOrder: 3));
+  }
+}

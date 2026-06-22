@@ -1,56 +1,66 @@
-/// Экран видеонаблюдения с вкладками.
+/// Экран видеонаблюдения — Legion NVR + локальная камера.
 library;
 
 import 'package:flutter/material.dart';
-import 'local_camera_tab.dart';
-import 'rtsp_cameras_tab.dart';
-import 'alarms_tab.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../application/state/devices_provider.dart';
+import '../../../domain/models/device.dart';
+import '../../widgets/device_card.dart';
 
-class VideoScreen extends StatefulWidget {
+class VideoScreen extends ConsumerWidget {
   const VideoScreen({super.key});
 
   @override
-  State<VideoScreen> createState() => _VideoScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final devices = ref.watch(devicesProvider);
+    final cameras = devices.where((d) => d.type == DeviceType.camera).toList();
 
-class _VideoScreenState extends State<VideoScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('📹 Видеонаблюдение'),
         centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.phone_android), text: 'Локальная'),
-            Tab(icon: Icon(Icons.videocam), text: 'RTSP'),
-            Tab(icon: Icon(Icons.warning_amber), text: 'Тревоги'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          LocalCameraTab(),
-          RtspCamerasTab(),
-          AlarmsTab(),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.open_in_browser),
+            tooltip: 'Открыть Legion NVR',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Открыть http://192.168.1.100:8080')),
+              );
+            },
+          ),
         ],
       ),
+      body: cameras.isEmpty
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.videocam_off, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('Нет камер', style: TextStyle(color: Colors.grey, fontSize: 18)),
+                  SizedBox(height: 8),
+                  Text(
+                    'Добавьте камеру в Legion NVR\nс типом "mjpeg" и укажите ссылку',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            )
+          : GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.85,
+              ),
+              itemCount: cameras.length,
+              itemBuilder: (context, index) {
+                return DeviceCard(device: cameras[index]);
+              },
+            ),
     );
   }
 }

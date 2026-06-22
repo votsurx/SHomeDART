@@ -68,8 +68,14 @@ dependencies:
   # =============WEBdav=================
   webdav_client: ^1.2.1
 
+  # ========Для открытия браузера========
+  url_launcher: ^6.3.0
+
   # ==========Pogoda=============
   http: ^1.2.0
+  # SQLite
+  sqlite3_flutter_libs: ^0.5.24  # ← ДОБАВИТЬ ЭТУ СТРОКУ
+
   #=============VIDEO=============
   camera: ^0.11.1
   udp: ^5.0.1           # для SSDP/ONVIF сканирования
@@ -81,6 +87,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: "^0.13.1"
 
   # ============ Code Generation ============
   build_runner: ^2.4.14        # Запуск кодогенераторов
@@ -94,8 +101,6 @@ dev_dependencies:
   # ============ Linting ============
   flutter_lints: ^5.0.0        # Правила линтинга Flutter
 
-
-
   # ============ Statistics ============
   fl_chart: ^0.68.0            # Графики для статистики
 
@@ -105,3 +110,11 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/animations/
+
+flutter_icons:
+  android: true
+  ios: false  # если iOS не нужен
+  image_path: "assets/icon.png"  # путь к вашей иконке
+  adaptive_icon_background: "#FFFFFF"  # цвет фона для адаптивной иконки
+  adaptive_icon_foreground: "assets/icon.png"  # или отдельный файл для переднего плана
+  adaptive_icon_monochrome: "assets/icon.png"

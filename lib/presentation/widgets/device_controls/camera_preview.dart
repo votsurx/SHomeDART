@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../../../domain/models/device.dart';
@@ -12,10 +11,17 @@ class DeviceCameraPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final cameraType = device.properties['cameraType'] as String? ?? 'device';
 
+    // MJPEG из Legion NVR
+    if (cameraType == 'mjpeg') {
+      return _MjpegPreview(device: device);
+    }
+
+    // RTSP (старый)
     if (cameraType == 'rtsp') {
       return _RtspPreview(device: device);
     }
 
+    // Локальная камера планшета
     return GestureDetector(
       onTap: () => _openDeviceFullScreen(context),
       child: _MiniPreview(device: device),
@@ -27,7 +33,106 @@ class DeviceCameraPreview extends StatelessWidget {
   }
 }
 
-// ═══════════ RTSP через VLC ═══════════
+// ═══════════ MJPEG из Legion NVR ═══════════
+
+class _MjpegPreview extends StatefulWidget {
+  final Device device;
+  const _MjpegPreview({required this.device});
+
+  @override
+  State<_MjpegPreview> createState() => _MjpegPreviewState();
+}
+
+class _MjpegPreviewState extends State<_MjpegPreview> {
+  String get _mjpegUrl => widget.device.properties['mjpegUrl'] as String? ?? '';
+  String get _legionUrl => widget.device.properties['legionUrl'] as String? ?? 'http://192.168.1.100:8080';
+  String get _cameraName => widget.device.name;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_mjpegUrl.isEmpty) {
+      return const Icon(Icons.videocam_off, size: 28, color: Colors.grey);
+    }
+
+    return GestureDetector(
+      onTap: () {
+        // Показать диалог: открыть в браузере
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('📷 $_cameraName'),
+            content: const Text('Открыть полный интерфейс Legion NVR в браузере?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.open_in_browser),
+                label: const Text('Открыть Legion'),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _openLegion(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // MJPEG-поток
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                _mjpegUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.black12,
+                    child: const Center(
+                      child: Icon(Icons.videocam_off, size: 28, color: Colors.grey),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Название камеры
+          Text(
+            _cameraName,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openLegion(BuildContext context) async {
+    final url = Uri.parse(_legionUrl);
+    try {
+      // Пробуем url_launcher если есть
+      // await launchUrl(url, mode: LaunchMode.externalApplication);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Открыть: $_legionUrl')),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть браузер')),
+      );
+    }
+  }
+}
+
+// ═══════════ RTSP через VLC (старый) ═══════════
 
 class _RtspPreview extends StatefulWidget {
   final Device device;
@@ -65,7 +170,6 @@ class _RtspPreviewState extends State<_RtspPreview> {
 
     return GestureDetector(
       onTap: () {
-        // Полноэкранный — пока заглушка
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Полноэкранный просмотр будет позже')),
         );
@@ -75,23 +179,12 @@ class _RtspPreviewState extends State<_RtspPreview> {
         children: [
           const Icon(Icons.videocam, size: 28, color: Colors.blue),
           const SizedBox(height: 4),
-          Text(
-            _rtspUrl,
-            style: const TextStyle(fontSize: 7),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text(_rtspUrl, style: const TextStyle(fontSize: 7), maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
           Container(
-            width: 60,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.black12,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Center(
-              child: Icon(Icons.play_circle, color: Colors.blue, size: 20),
-            ),
+            width: 60, height: 40,
+            decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(4)),
+            child: const Center(child: Icon(Icons.play_circle, color: Colors.blue, size: 20)),
           ),
         ],
       ),
@@ -99,7 +192,7 @@ class _RtspPreviewState extends State<_RtspPreview> {
   }
 }
 
-// ═══════════ КАМЕРА УСТРОЙСТВА ═══════════
+// ═══════════ Локальная камера планшета ═══════════
 
 class _MiniPreview extends StatefulWidget {
   final Device device;

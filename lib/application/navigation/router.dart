@@ -1,6 +1,4 @@
 /// Роутер приложения на GoRouter.
-/// Определяет все маршруты и связывает их с соответствующими экранами.
-/// Поддерживает онбординг с отдельным сканером (isOnboarding=true).
 library;
 import 'package:go_router/go_router.dart';
 import '../../presentation/screens/menu_screen.dart';
@@ -16,83 +14,84 @@ import '../../presentation/screens/timers_screen.dart';
 import '../../presentation/screens/statistics_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
 import '../../presentation/screens/cloud_settings_screen.dart';
-import '../../presentation/screens/video/video_screen.dart';
-import '../../presentation/screens/mqtt_settings_screen.dart';
-import '../../presentation/screens/vk_settings_screen.dart';
+import '../../presentation/screens/nvr_settings_screen.dart';  // ✅ ТОЛЬКО ЭТО
 
-/// Главный роутер. Содержит все маршруты приложения.
-/// initialLocation: '/' — главный экран (устройства).
 final router = GoRouter(
   initialLocation: '/',
   routes: [
-    // VK
-    GoRoute(
-      path: '/vk',
-      builder: (context, state) => const VkSettingsScreen(),
-    ),
-    // MQTT Settings
-    GoRoute(
-      path: '/mqtt',
-      builder: (context, state) => const MqttSettingsScreen(),
-    ),
-    // VIDEO
-    GoRoute(path: '/video', builder: (context, state) => const VideoScreen()),
-    // Главный экран — список устройств
+    // Главный экран
     GoRoute(
       path: '/',
       builder: (context, state) => const DeviceListScreen(),
     ),
-    // Меню — лаунчер с плитками (бывший HomeScreen)
+
+    // Меню
     GoRoute(
       path: '/menu',
       builder: (context, state) => const MenuScreen(),
     ),
-    // Облако — подключение Mail.ru, синхронизация бекапов
-    GoRoute(
-      path: '/cloud',
-      builder: (context, state) => const CloudSettingsScreen(),
-    ),
-    // Настройки — экспорт/импорт конфигурации, интервал опроса
+
+    // Настройки
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
     ),
-    // Статистика — графики вкл/выкл, энергопотребление
+
+    // NVR настройки
     GoRoute(
-      path: '/statistics',
-      builder: (context, state) => const StatisticsScreen(),
+      path: '/nvr_settings',
+      builder: (context, state) => const NvrSettingsScreen(),
     ),
-    // Таймеры — отложенное вкл/выкл устройств
+
+    // Облако
     GoRoute(
-      path: '/timers',
-      builder: (context, state) => const TimersScreen(),
+      path: '/cloud',
+      builder: (context, state) => const CloudSettingsScreen(),
     ),
-    // Журнал событий — история всех действий
-    GoRoute(
-      path: '/events',
-      builder: (context, state) => const EventsScreen(),
-    ),
-    // Управление комнатами — добавить, переименовать, удалить
+
+    // Управление комнатами
     GoRoute(
       path: '/rooms',
       builder: (context, state) => const RoomsManageScreen(),
     ),
-    // Сканер устройств
-    GoRoute(
-      path: '/scan',
-      builder: (context, state) => const ScanDevicesScreen(),
-    ),
-    // Сцены — создание/редактирование, ручной и timed запуск
+
+    // Сцены
     GoRoute(
       path: '/scenes',
       builder: (context, state) => const ScenesScreen(),
     ),
-    // Энергомониторинг — потребление kWh по устройствам
+
+    // Таймеры
+    GoRoute(
+      path: '/timers',
+      builder: (context, state) => const TimersScreen(),
+    ),
+
+    // Статистика
+    GoRoute(
+      path: '/statistics',
+      builder: (context, state) => const StatisticsScreen(),
+    ),
+
+    // Энергия
     GoRoute(
       path: '/energy',
       builder: (context, state) => const EnergyScreen(),
     ),
-    // Онбординг — Welcome экран для новых пользователей
+
+    // События
+    GoRoute(
+      path: '/events',
+      builder: (context, state) => const EventsScreen(),
+    ),
+
+    // Сканер Tuya
+    GoRoute(
+      path: '/scan',
+      builder: (context, state) => const ScanDevicesScreen(),
+    ),
+
+    // Онбординг
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const WelcomeScreen(),
