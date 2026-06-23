@@ -8,6 +8,7 @@ import '../../application/state/devices_provider.dart';
 import '../../application/state/nvr_provider.dart';
 import '../../data/services/mjpeg_stream_service.dart';
 import '../../data/services/nvr_api_client.dart';
+import '../../application/state/rooms_provider.dart';
 import 'dart:typed_data';
 
 class NvrCameraCard extends ConsumerStatefulWidget {
@@ -85,21 +86,30 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
       final settings = ref.read(nvrSettingsProvider);
       final client = NvrApiClient(host: settings.host, port: settings.port);
 
-      final newState = !widget.device.isOnline;
-      await client.updateCamera(_nvrId, {'enabled': newState ? 1 : 0});
+      // ✅ Текущее состояние enabled
+      final currentEnabled = widget.device.properties['enabled'] == true;
+      final newEnabled = !currentEnabled;
+
+      // ✅ Отправляем в NVR
+      await client.updateCamera(_nvrId, {'enabled': newEnabled ? 1 : 0});
       await client.applyCamera(_nvrId);
 
-      // Обновить локальное состояние
+      // ✅ Обновляем локальное состояние
       final updated = widget.device.copyWith(
-        isOnline: newState,
-        state: newState ? DeviceState.online : DeviceState.offline,
+        properties: {
+          ...widget.device.properties,
+          'enabled': newEnabled,
+        },
+        // isOnline тоже обновляем (если включена — показываем онлайн)
+        isOnline: newEnabled,
+        state: newEnabled ? DeviceState.online : DeviceState.offline,
       );
       ref.read(devicesProvider.notifier).updateDevice(updated);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(newState ? '✅ Камера включена' : '🔴 Камера выключена'),
+            content: Text(newEnabled ? '✅ Камера включена' : '🔴 Камера выключена'),
             duration: const Duration(seconds: 1),
           ),
         );
@@ -207,22 +217,14 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
     }
   }
 
-  void _openNvrSettings() {
-    final nvrSettings = ref.read(nvrSettingsProvider);
-    final url = '${nvrSettings.baseUrl}/cameras/$_nvrId/edit';
-    // Открываем в браузере
-    // TODO: использовать url_launcher
-  }
-
   // ============================================================
   // BUILD
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = widget.device.isOnline;
+    final isEnabled = widget.device.properties['enabled'] == true;
     final isRecording = widget.device.properties['recordEnabled'] == true;
-    final hasMotion = widget.device.properties['hasMotion'] == true;
     final isMotionEnabled = widget.device.properties['motionEnabled'] == true;
 
     return Card(
@@ -242,7 +244,7 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
                     Icon(
                       Icons.videocam,
                       size: 20,
-                      color: isOnline ? Colors.green : Colors.grey,
+                      color: isEnabled ? Colors.green : Colors.grey,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -258,7 +260,7 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.settings, size: 18),
-                      onPressed: _openNvrSettings,
+                      onPressed: () => _showCameraSettings(context, ref, widget.device),
                     ),
                   ],
                 ),
@@ -281,8 +283,8 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
                   children: [
                     _buildControlButton(
                       icon: Icons.power_settings_new,
-                      label: isOnline ? 'ON' : 'OFF',
-                      color: isOnline ? Colors.green : Colors.grey,
+                      label: isEnabled ? 'ON' : 'OFF',
+                      color: isEnabled ? Colors.green : Colors.grey,
                       onTap: _toggleCamera,
                     ),
                     const SizedBox(width: 12),
@@ -306,70 +308,44 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
           ),
 
           // ============================================================
-          // ИНДИКАТОР ЗАПИСИ
+          // ИНДИКАТОР ЗАПИСИ (убираем? оставляем только кнопку REC)
           // ============================================================
-          if (isRecording)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(
-                      Icons.fiber_manual_record,
-                      color: Colors.white,
-                      size: 12,
-                    ),
-                    SizedBox(width: 4),
-                    Text('REC', style: TextStyle(color: Colors.white, fontSize: 10)),
-                  ],
-                ),
-              ),
-            ),
-
-          // ============================================================
-          // ИНДИКАТОР ДВИЖЕНИЯ
-          // ============================================================
-          if (hasMotion)
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(
-                      Icons.warning_amber,
-                      color: Colors.white,
-                      size: 12,
-                    ),
-                    SizedBox(width: 4),
-                    Text('MOTION', style: TextStyle(color: Colors.white, fontSize: 10)),
-                  ],
-                ),
-              ),
-            ),
+          // ❌ УДАЛЁН блок с REC в углу
         ],
       ),
     );
   }
 
   Widget _buildVideoPreview() {
+    // ✅ Проверяем, включена ли камера в NVR
+    final isEnabled = widget.device.properties['enabled'] == true;
+
+    // ⚪ Если камера отключена в NVR — показываем баннер "Отключено"
+    if (!isEnabled) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.power_off, color: Colors.white, size: 48),
+              SizedBox(height: 8),
+              Text('Отключено', style: TextStyle(color: Colors.white, fontSize: 16)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 🔄 Если камера включена, но поток грузится
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
+    // ❌ Если ошибка или нет потока
     if (_hasError || _stream == null) {
       return const Center(
         child: Column(
@@ -383,6 +359,7 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
       );
     }
 
+    // ✅ Показываем видео
     return StreamBuilder<Uint8List>(
       stream: _stream,
       builder: (context, snapshot) {
@@ -405,23 +382,170 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
     );
   }
 
+  void _showCameraSettings(BuildContext context, WidgetRef ref, Device device) {
+    // ✅ Только комната и удаление, без названия
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final rooms = ref.watch(roomsProvider);
+          String selectedRoomId = device.roomId;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  device.name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // ✅ Только комната
+                DropdownButtonFormField<String>(
+                  initialValue: selectedRoomId,
+                  decoration: const InputDecoration(
+                    labelText: 'Комната',
+                    prefixIcon: Icon(Icons.meeting_room),
+                  ),
+                  items: rooms
+                      .map((r) => DropdownMenuItem(
+                    value: r.id,
+                    child: Text('${r.icon ?? "🏠"} ${r.name}'),
+                  ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setModalState(() => selectedRoomId = v);
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final updated = device.copyWith(roomId: selectedRoomId);
+                          ref.read(devicesProvider.notifier).updateDevice(updated);
+                          Navigator.pop(ctx);
+                        },
+                        icon: const Icon(Icons.save),
+                        label: const Text('Сохранить'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: ctx,
+                            builder: (dCtx) => AlertDialog(
+                              title: const Text('Удалить камеру?'),
+                              content: Text('Удалить "${device.name}" из SHome?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dCtx),
+                                  child: const Text('Отмена'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    ref.read(devicesProvider.notifier).removeDevice(device.id);
+                                    Navigator.pop(dCtx);
+                                    Navigator.pop(ctx);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('Удалить'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.delete),
+                        label: const Text('Удалить'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // ✅ Информация, что название прилетает из NVR
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    '📷 Название камеры управляется в LegionNVR',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildControlButton({
     required IconData icon,
     required String label,
     required Color color,
     required VoidCallback onTap,
   }) {
+    final isTablet = MediaQuery.of(context).size.shortestSide > 600;
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+
+    // Адаптивные размеры
+    double buttonSize;
+    double iconSize;
+    double fontSize;
+
+    if (isTablet) {
+      buttonSize = 48;
+      iconSize = 24;
+      fontSize = 10;
+    } else if (isPortrait) {
+      buttonSize = 32;  // Маленькие на телефоне вертикально
+      iconSize = 16;
+      fontSize = 7;
+    } else {
+      buttonSize = 32;  // Средние на телефоне горизонтально
+      iconSize = 16;
+      fontSize = 8;
+    }
+
     return GestureDetector(
       onTap: _isUpdating ? null : onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: buttonSize,
+            height: buttonSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
             ),
             child: _isUpdating
                 ? const SizedBox(
@@ -429,11 +553,11 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-                : Icon(icon, color: color, size: 20),
+                : Icon(icon, color: color, size: iconSize),
           ),
           Text(
             label,
-            style: TextStyle(fontSize: 9, color: Colors.grey[600]),
+            style: TextStyle(fontSize: fontSize, color: Colors.grey[600]),
           ),
         ],
       ),

@@ -69,6 +69,9 @@ class AdaptivePoller {
   void _tick() {
     final now = DateTime.now();
     for (final device in _devices) {
+      // ✅ Пропускаем NVR-камеры (у них нет Tuya ключей)
+      if (device.properties['cameraType'] == 'nvr') continue;
+
       if (device.deviceId == null || device.address == null) continue;
       final state = _states.putIfAbsent(device.id, () => _DevicePollState(_normalInterval));
       if (now.isAfter(state.nextPollAt)) {
