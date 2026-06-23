@@ -3,9 +3,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../application/state/nvr_provider.dart';
 import '../../data/services/nvr_api_client.dart';
+import '../../data/services/nvr_sync_service.dart';
+import '../../di/injection.dart';
+import '../../domain/repositories/device_repository.dart';
+import 'package:talker/talker.dart';
 
 class NvrSettingsScreen extends ConsumerStatefulWidget {
   const NvrSettingsScreen({super.key});
@@ -99,8 +102,19 @@ class _NvrSettingsScreenState extends ConsumerState<NvrSettingsScreen> {
     setState(() => _isSyncing = true);
 
     try {
-      // TODO: вызвать NvrSyncService.syncNow()
-      await Future.delayed(const Duration(seconds: 2));
+      final settings = ref.read(nvrSettingsProvider);
+      final apiClient = NvrApiClient(
+        host: settings.host,
+        port: settings.port,
+      );
+
+      final syncService = NvrSyncService(
+        deviceRepo: getIt<DeviceRepository>(),
+        talker: getIt<Talker>(),
+        apiClient: apiClient,
+      );
+
+      await syncService.sync();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -120,12 +134,6 @@ class _NvrSettingsScreenState extends ConsumerState<NvrSettingsScreen> {
     }
   }
 
-  void _openNvr() {
-    final settings = ref.read(nvrSettingsProvider);
-    final url = '${settings.baseUrl}';
-    // TODO: открыть в браузере
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -136,9 +144,6 @@ class _NvrSettingsScreenState extends ConsumerState<NvrSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ============================================================
-          // ПОДКЛЮЧЕНИЕ
-          // ============================================================
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -203,7 +208,7 @@ class _NvrSettingsScreenState extends ConsumerState<NvrSettingsScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Row(
@@ -222,42 +227,24 @@ class _NvrSettingsScreenState extends ConsumerState<NvrSettingsScreen> {
 
           const SizedBox(height: 12),
 
-          // ============================================================
-          // ДЕЙСТВИЯ
-          // ============================================================
           Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.sync, color: Colors.blue),
-                  title: const Text('Синхронизировать камеры'),
-                  subtitle: const Text('Обновить список камер из NVR'),
-                  trailing: _isSyncing
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                      : const Icon(Icons.chevron_right),
-                  onTap: _isSyncing ? null : _syncNow,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.open_in_browser, color: Colors.purple),
-                  title: const Text('Открыть LegionNVR'),
-                  subtitle: const Text('В браузере'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: _openNvr,
-                ),
-              ],
+            child: ListTile(
+              leading: const Icon(Icons.sync, color: Colors.blue),
+              title: const Text('Синхронизировать камеры'),
+              subtitle: const Text('Обновить список камер из NVR'),
+              trailing: _isSyncing
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+                  : const Icon(Icons.chevron_right),
+              onTap: _isSyncing ? null : _syncNow,
             ),
           ),
 
           const SizedBox(height: 24),
 
-          // ============================================================
-          // ИНФО
-          // ============================================================
           Card(
             color: Colors.blue.shade50,
             child: const Padding(

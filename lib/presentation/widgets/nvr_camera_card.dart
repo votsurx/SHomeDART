@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../domain/models/device.dart';
 import '../../application/state/devices_provider.dart';
 import '../../application/state/nvr_provider.dart';
@@ -357,27 +356,6 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
                     ),
                     SizedBox(width: 4),
                     Text('MOTION', style: TextStyle(color: Colors.white, fontSize: 10)),
-                  ],
-                ),
-              ),
-            ),
-
-          // ============================================================
-          // ИНДИКАТОР OFFLINE
-          // ============================================================
-          if (!isOnline)
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.wifi_off, color: Colors.white, size: 48),
-                    SizedBox(height: 8),
-                    Text('Offline', style: TextStyle(color: Colors.white, fontSize: 16)),
                   ],
                 ),
               ),

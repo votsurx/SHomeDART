@@ -39,11 +39,12 @@ class NvrSyncService {
 
   /// Выполнить синхронизацию
   Future<void> sync() async {
-    if (_isSyncing) return;
+    if (_isSyncing) {
+      return;
+    }
     _isSyncing = true;
 
     try {
-      // Проверяем доступность NVR
       final isAlive = await _apiClient.isAlive();
       if (!isAlive) {
         _talker.warning('⚠️ NVR недоступен, синхронизация отложена');
@@ -52,7 +53,6 @@ class NvrSyncService {
 
       _talker.debug('🔄 Syncing cameras from NVR...');
 
-      // Получаем камеры из NVR
       final nvrCameras = await _apiClient.getCameras();
       final localDevices = await _deviceRepo.getAllDevices();
 
@@ -65,7 +65,7 @@ class NvrSyncService {
         );
 
         if (!exists) {
-          final device = _nvrToDevice(nvrCam);
+          final device = await _nvrToDevice(nvrCam);
           await _deviceRepo.saveDevice(device);
           _talker.info('✅ Добавлена камера: ${nvrCam.name} (ID: ${nvrCam.id})');
         }
@@ -74,6 +74,7 @@ class NvrSyncService {
       // ============================================================
       // 2. ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЕ
       // ============================================================
+      // ✅ Объявляем localNvrDevices ЗДЕСЬ
       final localNvrDevices = localDevices
           .where((d) => d.properties['cameraType'] == 'nvr')
           .toList();
@@ -82,7 +83,6 @@ class NvrSyncService {
         final nvrId = device.properties['nvrId'] as int?;
         if (nvrId == null) continue;
 
-        // ✅ ИСПРАВЛЕНО: используем цикл для поиска вместо firstWhere
         NvrCamera? nvrCam;
         for (final cam in nvrCameras) {
           if (cam.id == nvrId) {
@@ -92,12 +92,10 @@ class NvrSyncService {
         }
 
         if (nvrCam == null) {
-          // Камера удалена из NVR
           await _deviceRepo.deleteDevice(device.id);
           _talker.info('🗑️ Удалена камера: ${device.name} (ID: $nvrId)');
         } else {
-          // Обновляем
-          final updated = _nvrToDevice(nvrCam);
+          final updated = await _nvrToDevice(nvrCam);
           if (_hasChanges(device, updated)) {
             await _deviceRepo.saveDevice(updated);
             _talker.debug('🔄 Обновлена камера: ${nvrCam.name}');
@@ -115,13 +113,16 @@ class NvrSyncService {
 
   /// Преобразует NvrCamera в Device (SHome модель)
   Device _nvrToDevice(NvrCamera nvrCam) {
+    // ✅ Просто используем enabled из NVR
+    final isOnline = nvrCam.enabled;
+
     return Device(
       id: 'nvr_${nvrCam.id}',
       name: nvrCam.name,
       type: DeviceType.camera,
       roomId: 'other',
-      isOnline: nvrCam.enabled,
-      state: nvrCam.enabled ? DeviceState.online : DeviceState.offline,
+      isOnline: isOnline,
+      state: isOnline ? DeviceState.online : DeviceState.offline,
       deviceId: 'nvr_${nvrCam.id}',
       address: _apiClient.host,
       properties: {

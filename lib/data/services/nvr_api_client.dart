@@ -10,22 +10,39 @@ class NvrApiClient {
   final int _port;
   final http.Client _client;
   final Duration _timeout;
+  final String _username;
+  final String _password;
 
   NvrApiClient({
     required String host,
     int port = 8080,
     http.Client? client,
     Duration timeout = const Duration(seconds: 5),
+    String username = 'admin',  // ← ДОБАВИТЬ
+    String password = 'admin123',  // ← ДОБАВИТЬ
   })  : _host = host,
         _port = port,
         _client = client ?? http.Client(),
-        _timeout = timeout;
+        _timeout = timeout,
+        _username = username,
+        _password = password;
 
   // ✅ ДОБАВЛЯЕМ ПУБЛИЧНЫЙ ГЕТТЕР
   String get host => _host;
   int get port => _port;
+  http.Client get client => _client;  // ← ДОБАВИТЬ
+  Map<String, String> get authHeaders => _authHeaders;  // ← ДОБАВИТЬ
 
   String get _baseUrl => 'http://$_host:$_port';
+
+  // ✅ Добавляем базовую авторизацию
+  Map<String, String> get _authHeaders {
+    final credentials = '$_username:$_password';
+    final encoded = base64Encode(utf8.encode(credentials));
+    return {
+      'Authorization': 'Basic $encoded',
+    };
+  }
 
   // ============================================================
   // 🏥 HEALTH CHECK
@@ -51,20 +68,26 @@ class NvrApiClient {
 
   /// Получить список всех камер
   Future<List<NvrCamera>> getCameras() async {
-    final response = await _client
-        .get(
-      Uri.parse('$_baseUrl/api/cameras'),
-    )
-        .timeout(_timeout);
+    final url = '$_baseUrl/api/cameras';
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to load cameras: ${response.statusCode}');
+    try {
+      final response = await _client
+          .get(
+        Uri.parse(url),
+        headers: _authHeaders,  // ✅ Добавляем заголовки
+      )
+          .timeout(_timeout);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load cameras: ${response.statusCode}');
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final cameras = data['cameras'] as List? ?? [];
+      return cameras.map((c) => NvrCamera.fromJson(c as Map<String, dynamic>)).toList();
+    } catch (e) {
+      rethrow;
     }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final cameras = data['cameras'] as List? ?? [];
-
-    return cameras.map((c) => NvrCamera.fromJson(c as Map<String, dynamic>)).toList();
   }
 
   /// Получить детали одной камеры
@@ -134,6 +157,20 @@ class NvrApiClient {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to restart streams: ${response.statusCode}');
+    }
+  }
+
+  /// Проверяет доступность камеры по MJPEG потоку
+  Future<bool> isCameraOnline(int cameraId) async {
+    try {
+      final url = getMjpegUrl(cameraId);
+      final response = await _client.head(
+        Uri.parse(url),
+        headers: _authHeaders,
+      ).timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 
