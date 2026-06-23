@@ -65,7 +65,7 @@ class NvrSyncService {
         );
 
         if (!exists) {
-          final device = await _nvrToDevice(nvrCam);
+          final device = _nvrToDevice(nvrCam).copyWith(roomId: 'all');  // ← 'all'
           await _deviceRepo.saveDevice(device);
           _talker.info('✅ Добавлена камера: ${nvrCam.name} (ID: ${nvrCam.id})');
         }
@@ -95,9 +95,11 @@ class NvrSyncService {
           await _deviceRepo.deleteDevice(device.id);
           _talker.info('🗑️ Удалена камера: ${device.name} (ID: $nvrId)');
         } else {
-          final updated = await _nvrToDevice(nvrCam);
-          if (_hasChanges(device, updated)) {
-            await _deviceRepo.saveDevice(updated);
+          final updated = _nvrToDevice(nvrCam);
+          // ✅ Сохраняем комнату из локального устройства!
+          final updatedWithRoom = updated.copyWith(roomId: device.roomId);
+          if (_hasChanges(device, updatedWithRoom)) {
+            await _deviceRepo.saveDevice(updatedWithRoom);
             _talker.debug('🔄 Обновлена камера: ${nvrCam.name}');
           }
         }

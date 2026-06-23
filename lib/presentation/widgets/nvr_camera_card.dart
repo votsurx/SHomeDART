@@ -383,127 +383,143 @@ class _NvrCameraCardState extends ConsumerState<NvrCameraCard> {
   }
 
   void _showCameraSettings(BuildContext context, WidgetRef ref, Device device) {
-    // ✅ Только комната и удаление, без названия
+    final rooms = ref.watch(roomsProvider);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) {
-          final rooms = ref.watch(roomsProvider);
-          String selectedRoomId = device.roomId;
+      builder: (ctx) {
+        // ✅ Выносим selectedRoomId в состояние StatefulBuilder
+        String selectedRoomId = device.roomId;
 
-          return Padding(
-            padding: EdgeInsets.only(
-              left: 24,
-              right: 24,
-              top: 24,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  device.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-
-                // ✅ Только комната
-                DropdownButtonFormField<String>(
-                  initialValue: selectedRoomId,
-                  decoration: const InputDecoration(
-                    labelText: 'Комната',
-                    prefixIcon: Icon(Icons.meeting_room),
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    device.name,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  items: rooms
-                      .map((r) => DropdownMenuItem(
-                    value: r.id,
-                    child: Text('${r.icon ?? "🏠"} ${r.name}'),
-                  ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setModalState(() => selectedRoomId = v);
-                  },
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          final updated = device.copyWith(roomId: selectedRoomId);
-                          ref.read(devicesProvider.notifier).updateDevice(updated);
-                          Navigator.pop(ctx);
-                        },
-                        icon: const Icon(Icons.save),
-                        label: const Text('Сохранить'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
+                  DropdownButtonFormField<String>(
+                    value: selectedRoomId,  // ✅ Используем value, а не initialValue
+                    decoration: const InputDecoration(
+                      labelText: 'Комната',
+                      prefixIcon: Icon(Icons.meeting_room),
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: 'all',
+                        child: Text('🏠 Все'),
+                      ),
+                      ...rooms.map((r) => DropdownMenuItem(
+                        value: r.id,
+                        child: Text('${r.icon ?? "🏠"} ${r.name}'),
+                      )),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) {
+                        print('🔧 Выбрана комната: $v');
+                        setModalState(() {
+                          selectedRoomId = v;  // ✅ Обновляем состояние
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            print('💾 Сохраняем комнату: $selectedRoomId');
+                            final updated = device.copyWith(roomId: selectedRoomId);
+                            ref.read(devicesProvider.notifier).updateDevice(updated);
+
+                            // ✅ Проверяем после сохранения
+                            final check = ref.read(devicesProvider).firstWhere((d) => d.id == device.id);
+                            print('✅ После сохранения комната: ${check.roomId}');
+
+                            Navigator.pop(ctx);
+                          },
+                          icon: const Icon(Icons.save),
+                          label: const Text('Сохранить'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: ctx,
-                            builder: (dCtx) => AlertDialog(
-                              title: const Text('Удалить камеру?'),
-                              content: Text('Удалить "${device.name}" из SHome?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(dCtx),
-                                  child: const Text('Отмена'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    ref.read(devicesProvider.notifier).removeDevice(device.id);
-                                    Navigator.pop(dCtx);
-                                    Navigator.pop(ctx);
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                    foregroundColor: Colors.white,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: ctx,
+                              builder: (dCtx) => AlertDialog(
+                                title: const Text('Удалить камеру?'),
+                                content: Text('Удалить "${device.name}" из SHome?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(dCtx),
+                                    child: const Text('Отмена'),
                                   ),
-                                  child: const Text('Удалить'),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.delete),
-                        label: const Text('Удалить'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      ref.read(devicesProvider.notifier).removeDevice(device.id);
+                                      Navigator.pop(dCtx);
+                                      Navigator.pop(ctx);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Удалить'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.delete),
+                          label: const Text('Удалить'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                // ✅ Информация, что название прилетает из NVR
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    child: const Text(
+                      '📷 Название камеры управляется в LegionNVR',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
                   ),
-                  child: const Text(
-                    '📷 Название камеры управляется в LegionNVR',
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

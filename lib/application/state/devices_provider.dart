@@ -139,7 +139,8 @@ class DevicesNotifier extends StateNotifier<List<Device>> {
 
   Future<void> updateDevice(Device device) async {
     await _repository.saveDevice(device);
-    await _loadDevices();
+    // ✅ Обновляем только одно устройство, без перезагрузки всех
+    state = state.map((d) => d.id == device.id ? device : d).toList();
     onCommandSent?.call(device.id);
   }
 
